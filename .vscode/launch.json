@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug (OpenOCD)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "serverpath": "/opt/homebrew/bin/openocd",
+            "device": "STM32G474RE",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32g4x.cfg"
+            ],
+            "svdFile": "/Users/luka/ST/SVD/STM32G474xx.svd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/build/STM32_dev.elf",
+            "showDevDebugOutput": "none"
+        }
+    ]
+}
