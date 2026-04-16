@@ -31,3 +31,6 @@ install_manifest.txt
 # --- OS Specific ---
 .DS_Store
 Thumbs.db
+
+# --- User Generated Files ---
+EkoSonda.md

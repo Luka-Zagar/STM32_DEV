@@ -43,6 +43,8 @@ set(cpu_PARAMS
 # Sources
 set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
+	${CMAKE_CURRENT_SOURCE_DIR}/Src/system_stm32g4xx.c
+	${CMAKE_CURRENT_SOURCE_DIR}/Src/scheduler.c
 )
 
 # Include directories for all compilers

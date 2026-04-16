@@ -1,3 +1,6 @@
+#include "stm32g474xx.h"
+#include "scheduler.h"
+
 /**
  ******************************************************************************
  * @file        main.c
@@ -5,7 +8,7 @@
  * @author      Luka Zagar (student at University of Ljubljana, Faculty of Electrical Engineering)
  * 
  * @date        5th April 2026
- * @brief       Main program entry point
+ * @brief       Application logic using the modular scheduler.
  *
  * @board       NUCLEO-G474RE
  * @mcu         STM32G474RET6 — ARM Cortex-M4 @ 170MHz, 512KB Flash, 128KB RAM
@@ -13,20 +16,36 @@
  ******************************************************************************
  */
 
-#include <stdint.h>
+/* ── Application Tasks ───────────────────────────────────────────────────── */
 
-/* ── Register Base Addresses ──────────────────────────────────────────────── */
+// Heartbeat Task: Toggles onboard and external LEDs.
+void Heartbeat_Task(void) {
 
+    GPIOA->ODR ^= GPIO_ODR_5; /* LD2 (Green onboard LED) */
+    GPIOB->ODR ^= GPIO_ODR_0; /* External LED on PB0 */
+}
 
-/* ── Pin Definitions ──────────────────────────────────────────────────────── */
+/* ── Main Entry Point ───────────────────────────────────────────────────── */
 
-
-/* ── Private Function Declarations ────────────────────────────────────────── */
-
-
-/* ── Main ─────────────────────────────────────────────────────────────────── */
 int main(void) {
+    // 1. Hardware Initialization (Register Level)
+    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN;
 
-    /* Safety trap incase main ever returns */
-    while(1) {}
+    GPIOA->MODER &= ~(3UL << (5 * 2)); GPIOA->MODER |= (1UL << (5 * 2));
+    GPIOB->MODER &= ~(3UL << (0 * 2)); GPIOB->MODER |= (1UL << (0 * 2));
+
+
+    // 2. Initialize the OS Scheduler (Running at 170MHz)
+    SCH_Init(170000000);
+
+    // 3. Add Application Tasks
+    SCH_Add_Task(Heartbeat_Task, 0, 500);
+
+    // 4. Start the OS
+    SCH_Start();
+
+    // 5. The Dispatch Loop
+    while (1) {
+        SCH_Dispatch_Tasks();
+    }
 }
