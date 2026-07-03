@@ -25,8 +25,9 @@ static void print_task_line(const char *name, int task_id) {
 }
 
 void Task_Status(void) {
-    uart_write_str(STATUS_UART, "\r\n-- status --\r\n");
+    uart_write_str(STATUS_UART, "\n\r---------------------------------------------------------------\r");
+    uart_write_str(STATUS_UART, "\n\rEkoSonda RTOS Running manager \r\n");
+    uart_write_str(STATUS_UART, "\r * Press 'S' to set the blink interval \r\n\n");
     print_task_line("Task 1 (Heartbeat)", heartbeat_id);
     print_task_line("Task 2 (Console)", console_id);
-    uart_write_str(STATUS_UART, "> ");
 }

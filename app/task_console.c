@@ -55,8 +55,7 @@ void Console_Task_Init(int heartbeat_id) {
     heartbeat_task_id = heartbeat_id;
     uart_init(CONSOLE_UART, CONSOLE_BAUD);
     uart_write_str(CONSOLE_UART,
-        "\r\nEkoSonda console ready. Press 'S' to set the blink "
-        "interval.\r\n");
+        "\r\nEkoSonda console ready. \r\n");
 }
 
 void Console_Set_Status_Task(int task_id) {
