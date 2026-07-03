@@ -136,9 +136,7 @@ static void print_gps_dashboard(void) {
                  * once means the flag itself is the wrong signal here,
                  * a known false-positive on some NEO-8M clones. */
                 uart_write_str(CONSOLE_UART,
-                    " (likely false positive - clone modules sometimes "
-                    "misreport this despite a working antenna; you have "
-                    "a fix, so it's probably fine)");
+                    " (likely false positive - clone NEO-8M, check wiring!)");
             } else {
                 uart_write_str(CONSOLE_UART, " (check wiring!)");
             }
