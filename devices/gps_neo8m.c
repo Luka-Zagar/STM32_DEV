@@ -43,6 +43,19 @@ static uint32_t parse_udec(const char *s) {
     return v;
 }
 
+static int contains(const char *haystack, const char *needle) {
+    for (const char *h = haystack; *h; h++) {
+        const char *a = h;
+        const char *b = needle;
+        while (*a && *b && *a == *b) {
+            a++;
+            b++;
+        }
+        if (*b == '\0') return 1;
+    }
+    return 0;
+}
+
 /* Parses a plain decimal field like "12.34" or "0.00" into an integer
  * scaled by target_scale (e.g. 10 for tenths), using integer arithmetic
  * only. Handles a leading '-' (RMC/GGA/GSA fields here are never
@@ -161,6 +174,22 @@ static void handle_gsa(char *cursor) {
     fix.vdop_x10 = (uint16_t)parse_decimal_scaled(vdop, 10);
 }
 
+static void handle_txt(char *cursor) {
+    next_field(&cursor); /* total messages, unused */
+    next_field(&cursor); /* this message's number, unused */
+    next_field(&cursor); /* severity code, unused */
+    char *text = next_field(&cursor);
+
+    /* u-blox antenna supervisor messages: "ANTENNA OPEN"/"SHORT"/"OK". */
+    if (contains(text, "ANTENNA OPEN")) {
+        fix.antenna_status = GPS_ANTENNA_OPEN;
+    } else if (contains(text, "ANTENNA SHORT")) {
+        fix.antenna_status = GPS_ANTENNA_SHORT;
+    } else if (contains(text, "ANTENNA OK")) {
+        fix.antenna_status = GPS_ANTENNA_OK;
+    }
+}
+
 static gps_constellation_t talker_to_constellation(const char *tag) {
     /* tag looks like "$GPGSV", "$GLGSV", "$GAGSV", "$GBGSV"/"$BDGSV" */
     if (tag[1] == 'G' && tag[2] == 'P') return GPS_CONST_GPS;
@@ -228,6 +257,8 @@ static void handle_sentence(char *sentence) {
         handle_gsa(cursor);
     } else if (suffix[0] == 'G' && suffix[1] == 'S' && suffix[2] == 'V') {
         handle_gsv(tag, cursor);
+    } else if (suffix[0] == 'T' && suffix[1] == 'X' && suffix[2] == 'T') {
+        handle_txt(cursor);
     }
 }
 

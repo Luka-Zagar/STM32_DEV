@@ -12,6 +12,13 @@ typedef enum {
     GPS_CONST_COUNT
 } gps_constellation_t;
 
+typedef enum {
+    GPS_ANTENNA_UNKNOWN = 0, /* no $GPTXT antenna-supervisor message seen yet */
+    GPS_ANTENNA_OK,
+    GPS_ANTENNA_OPEN,        /* antenna disconnected/broken wire */
+    GPS_ANTENNA_SHORT        /* antenna short circuit */
+} gps_antenna_status_t;
+
 typedef struct {
     int32_t lat_e7;         /* 1e-7 deg, +N/-S, from RMC */
     int32_t lon_e7;         /* 1e-7 deg, +E/-W, from RMC */
@@ -28,6 +35,7 @@ typedef struct {
     uint16_t hdop_x10;      /* from GSA */
     uint16_t vdop_x10;      /* from GSA */
     uint16_t avg_snr_x10;   /* dBHz * 10, averaged over the last full round of GSV sentences */
+    uint8_t antenna_status; /* gps_antenna_status_t, from $GPTXT */
 } gps_fix_t;
 
 /* Bus-handle convention: gps_init(USART1, 9600), never gps_uart_init(). */

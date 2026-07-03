@@ -123,6 +123,15 @@ static void print_gps_dashboard(void) {
                                   fix->fix_type == 2 ? "2D FIX" : "NO FIX");
     uart_write_str(CONSOLE_UART, "\r\n");
 
+    uart_write_str(CONSOLE_UART, "Antenna:   ");
+    switch (fix->antenna_status) {
+        case GPS_ANTENNA_OK:    uart_write_str(CONSOLE_UART, "OK"); break;
+        case GPS_ANTENNA_OPEN:  uart_write_str(CONSOLE_UART, "OPEN (check wiring!)"); break;
+        case GPS_ANTENNA_SHORT: uart_write_str(CONSOLE_UART, "SHORT (check wiring!)"); break;
+        default:                uart_write_str(CONSOLE_UART, "unknown"); break;
+    }
+    uart_write_str(CONSOLE_UART, "\r\n");
+
     uart_write_str(CONSOLE_UART, "Sats:      ");
     uart_write_uint(CONSOLE_UART, fix->num_sats);
     uart_write_str(CONSOLE_UART, " Used (from ");
