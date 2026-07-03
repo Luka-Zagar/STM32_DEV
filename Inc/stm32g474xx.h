@@ -203,11 +203,3 @@ typedef struct {
 #define SYSTICK_CTRL_CLKSOURCE (1UL << 2) /* Use Processor Clock source */
 
 #endif /* STM32G474XX_H */
-
-// WIFI Module (ESP8266-01S) - USART3
-/* USART3 */
-#define USART3_BASE         (0x40004800UL)
-#define USART3              ((USART_TypeDef *) USART3_BASE)
-
-/* RCC additions */
-#define RCC_APB1ENR1_USART3EN  (1UL << 18)  

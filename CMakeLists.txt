@@ -42,15 +42,18 @@ set(cpu_PARAMS
 
 # Sources
 set(sources_SRCS
-	${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
-	${CMAKE_CURRENT_SOURCE_DIR}/Src/system_stm32g4xx.c
-	${CMAKE_CURRENT_SOURCE_DIR}/Src/scheduler.c
-	${CMAKE_CURRENT_SOURCE_DIR}/Src/esp8266.c
+	${CMAKE_CURRENT_SOURCE_DIR}/core/main.c
+	${CMAKE_CURRENT_SOURCE_DIR}/core/system_clock.c
+	${CMAKE_CURRENT_SOURCE_DIR}/core/systick.c
 )
 
 # Include directories for all compilers
 set(include_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}/Inc
+	${CMAKE_CURRENT_SOURCE_DIR}/core
+	${CMAKE_CURRENT_SOURCE_DIR}/drivers
+	${CMAKE_CURRENT_SOURCE_DIR}/devices
+	${CMAKE_CURRENT_SOURCE_DIR}/app
 )
 
 # Include directories for each compiler
@@ -146,7 +149,6 @@ target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
     ${cpu_PARAMS}
     ${linker_OPTS}
     -Wl,-Map=${CMAKE_PROJECT_NAME}.map
-    -u _printf_float # STDIO float formatting support (remove if not used)
     --specs=nosys.specs
     -Wl,--start-group
     -lc
