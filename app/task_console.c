@@ -6,6 +6,7 @@
 #include "gps_neo8m.h"
 #include "rtc.h"
 #include "task_gps.h"
+#include "task_wifi.h"
 
 #define CONSOLE_UART USART2
 #define CONSOLE_BAUD 115200
@@ -16,7 +17,7 @@
  * fixed display-time offset, not real timezone/DST handling. */
 #define LOCAL_TZ_OFFSET_HOURS 2
 
-typedef enum { CONSOLE_IDLE, CONSOLE_LED_MENU, CONSOLE_GPS_MENU } console_state_t;
+typedef enum { CONSOLE_IDLE, CONSOLE_LED_MENU, CONSOLE_GPS_MENU, CONSOLE_WIFI_MENU } console_state_t;
 
 static int heartbeat_task_id = -1;
 static int status_task_id = -1;
@@ -242,6 +243,20 @@ static void enter_gps_menu(void) {
     print_gps_dashboard();
 }
 
+static void print_wifi_data(void) {
+    uart_write_str(CONSOLE_UART, "ESP8266: ");
+    uart_write_str(CONSOLE_UART, Task_WiFi_Status_Str());
+    uart_write_str(CONSOLE_UART, "\r\n");
+}
+
+static void enter_wifi_menu(void) {
+    state = CONSOLE_WIFI_MENU;
+    if (status_task_id >= 0) SCH_Pause_Task(status_task_id);
+    last_refresh_ms = SysTick_GetMillis();
+    uart_write_str(CONSOLE_UART, "\r\n-- WiFi setup and data (press 'W' again to exit) --\r\n");
+    print_wifi_data();
+}
+
 static void exit_submenu(void) {
     state = CONSOLE_IDLE;
     if (status_task_id >= 0) SCH_Resume_Task(status_task_id);
@@ -269,6 +284,10 @@ static void run_idle(void) {
         }
         if (byte == 'G' || byte == 'g') {
             enter_gps_menu();
+            return;
+        }
+        if (byte == 'W' || byte == 'w') {
+            enter_wifi_menu();
             return;
         }
     }
@@ -321,10 +340,28 @@ static void run_gps_menu(void) {
     }
 }
 
+static void run_wifi_menu(void) {
+    uint8_t byte;
+    while (uart_read_byte(CONSOLE_UART, &byte)) {
+        if (byte == 'W' || byte == 'w') {
+            exit_submenu();
+            return;
+        }
+        /* view-only: any other key is ignored */
+    }
+
+    uint32_t now = SysTick_GetMillis();
+    if ((int32_t)(now - last_refresh_ms) >= SUBMENU_REFRESH_MS) {
+        last_refresh_ms = now;
+        print_wifi_data();
+    }
+}
+
 void Console_Task(void) {
     switch (state) {
         case CONSOLE_IDLE: run_idle(); break;
         case CONSOLE_LED_MENU: run_led_menu(); break;
         case CONSOLE_GPS_MENU: run_gps_menu(); break;
+        case CONSOLE_WIFI_MENU: run_wifi_menu(); break;
     }
 }

@@ -7,7 +7,8 @@
 /* Instance-parameterized UART driver: uart_init(USART2, 115200), never
  * console_init(). GPIO/RCC wiring per instance is added inside uart.c as
  * each peripheral gets physically wired (see docs/pinout.md); USART1
- * (GPS, PC4/PC5) and USART2 (ST-LINK VCP) are wired today.
+ * (GPS, PC4/PC5), USART2 (ST-LINK VCP), and USART3 (ESP8266, PB10/PB11)
+ * are wired today.
  *
  * RX is interrupt-driven into a per-instance ring buffer so callers never
  * block waiting on incoming bytes.

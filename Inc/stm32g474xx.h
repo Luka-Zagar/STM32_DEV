@@ -119,6 +119,7 @@ typedef struct {
 #define RCC_AHB2ENR_GPIOBEN    (1UL << 1) /* Enable Clock for Port B */
 #define RCC_AHB2ENR_GPIOCEN    (1UL << 2) /* Enable Clock for Port C */
 #define RCC_APB1ENR1_USART2EN  (1UL << 17) /* Enable Clock for USART2 */
+#define RCC_APB1ENR1_USART3EN  (1UL << 18) /* Enable Clock for USART3 */
 #define RCC_APB2ENR_USART1EN   (1UL << 14) /* Enable Clock for USART1 */
 
 /* ── FLASH ──────────────────────────────────────────────────────────────── 
@@ -221,6 +222,8 @@ typedef struct {
 #define USART1              ((USART_TypeDef *) USART1_BASE)
 #define USART2_BASE         (0x40004400UL)
 #define USART2              ((USART_TypeDef *) USART2_BASE)
+#define USART3_BASE         (0x40004800UL)
+#define USART3              ((USART_TypeDef *) USART3_BASE)
 
 /* USART Bit Definitions */
 #define USART_CR1_UE           (1UL << 0)  /* USART Enable */
@@ -253,6 +256,7 @@ typedef struct {
 
 #define USART1_IRQn         37
 #define USART2_IRQn         38
+#define USART3_IRQn         39
 
 /* ── DWT (Data Watchpoint and Trace) ───────────────────────────────────────
    Core debug peripheral with a free-running cycle counter, used to time

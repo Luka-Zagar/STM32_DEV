@@ -9,13 +9,13 @@ typedef struct {
     volatile uint16_t tail;
 } uart_rxbuf_t;
 
-/* Slot 0 = USART1 (GPS), slot 1 = USART2 (console). Extend as USART3
- * (ESP8266) gets wired. */
-static uart_rxbuf_t rx_bufs[2];
+/* Slot 0 = USART1 (GPS), slot 1 = USART2 (console), slot 2 = USART3 (ESP8266). */
+static uart_rxbuf_t rx_bufs[3];
 
 static int uart_slot(USART_TypeDef *uart) {
     if (uart == USART1) return 0;
     if (uart == USART2) return 1;
+    if (uart == USART3) return 2;
     return -1;
 }
 
@@ -34,6 +34,13 @@ static void uart_gpio_init(USART_TypeDef *uart) {
         GPIOA->MODER |= (2UL << (2 * 2)) | (2UL << (3 * 2));
         GPIOA->AFR[0] &= ~((0xFUL << (2 * 4)) | (0xFUL << (3 * 4)));
         GPIOA->AFR[0] |= (7UL << (2 * 4)) | (7UL << (3 * 4));
+    } else if (uart == USART3) {
+        /* PB10 = TX, PB11 = RX, AF7 - to the ESP8266 (ESP-01S) */
+        RCC->AHB2ENR |= RCC_AHB2ENR_GPIOBEN;
+        GPIOB->MODER &= ~((3UL << (10 * 2)) | (3UL << (11 * 2)));
+        GPIOB->MODER |= (2UL << (10 * 2)) | (2UL << (11 * 2));
+        GPIOB->AFR[1] &= ~((0xFUL << ((10 - 8) * 4)) | (0xFUL << ((11 - 8) * 4)));
+        GPIOB->AFR[1] |= (7UL << ((10 - 8) * 4)) | (7UL << ((11 - 8) * 4));
     }
 }
 
@@ -47,6 +54,8 @@ void uart_init(USART_TypeDef *uart, uint32_t baud) {
         RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
     } else if (uart == USART2) {
         RCC->APB1ENR1 |= RCC_APB1ENR1_USART2EN;
+    } else if (uart == USART3) {
+        RCC->APB1ENR1 |= RCC_APB1ENR1_USART3EN;
     }
 
     rx_bufs[slot].head = 0;
@@ -59,6 +68,8 @@ void uart_init(USART_TypeDef *uart, uint32_t baud) {
         NVIC_EnableIRQ(USART1_IRQn);
     } else if (uart == USART2) {
         NVIC_EnableIRQ(USART2_IRQn);
+    } else if (uart == USART3) {
+        NVIC_EnableIRQ(USART3_IRQn);
     }
 }
 
@@ -153,4 +164,8 @@ void USART1_IRQHandler(void) {
 
 void USART2_IRQHandler(void) {
     uart_isr_common(USART2, 1);
+}
+
+void USART3_IRQHandler(void) {
+    uart_isr_common(USART3, 2);
 }

@@ -8,11 +8,13 @@
 static int heartbeat_id = -1;
 static int console_id = -1;
 static int gps_id = -1;
+static int wifi_id = -1;
 
-void Task_Status_Init(int heartbeat_task_id, int console_task_id, int gps_task_id) {
+void Task_Status_Init(int heartbeat_task_id, int console_task_id, int gps_task_id, int wifi_task_id) {
     heartbeat_id = heartbeat_task_id;
     console_id = console_task_id;
     gps_id = gps_task_id;
+    wifi_id = wifi_task_id;
 }
 
 static void print_task_line(const char *name, int task_id) {
@@ -30,8 +32,10 @@ void Task_Status(void) {
     uart_write_str(STATUS_UART, "\n\r---------------------------------------------------------------\r");
     uart_write_str(STATUS_UART, "\n\rEkoSonda RTOS Running manager \r\n");
     uart_write_str(STATUS_UART, "\r * Press 'L' for LED setup and data \r\n");
-    uart_write_str(STATUS_UART, "\r * Press 'G' for GPS setup and data \r\n\n");
+    uart_write_str(STATUS_UART, "\r * Press 'G' for GPS setup and data \r\n");
+    uart_write_str(STATUS_UART, "\r * Press 'W' for WiFi setup and data \r\n\n");
     print_task_line("Task 1 (Heartbeat)", heartbeat_id);
     print_task_line("Task 2 (Console)", console_id);
     print_task_line("Task 3 (GPS)", gps_id);
+    print_task_line("Task 4 (WiFi)", wifi_id);
 }

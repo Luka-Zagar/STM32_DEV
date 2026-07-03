@@ -11,3 +11,5 @@ Written before wiring anything; check against the Nucleo-G474RE user manual
 | PA3 | AF7 | USART2_RX | Routed to ST-LINK VCP (no external wiring needed). Debug console, 115200 8N1. |
 | PC4 | AF7 | USART1_TX | To GPS module (NEO-8M) RX. 9600 8N1. |
 | PC5 | AF7 | USART1_RX | To GPS module (NEO-8M) TX. 9600 8N1. |
+| PB10 | AF7 | USART3_TX | To ESP8266 (ESP-01S) RX. 115200 8N1 (AT firmware default; adjust if the module reports a different baud). Give the ESP-01S its own decoupling (bulk electrolytic + ceramic) - it spikes 300-400mA on TX bursts and browns out weak rails. |
+| PB11 | AF7 | USART3_RX | To ESP8266 (ESP-01S) TX. 115200 8N1. |
