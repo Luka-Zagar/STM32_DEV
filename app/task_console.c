@@ -1,5 +1,6 @@
 #include "task_console.h"
 #include "stm32g474xx.h"
+#include "systick.h"
 #include "uart.h"
 #include "scheduler.h"
 #include "gps_neo8m.h"
@@ -7,46 +8,49 @@
 #define CONSOLE_UART USART2
 #define CONSOLE_BAUD 115200
 #define LINE_BUF_SIZE 32
+#define SUBMENU_REFRESH_MS 1000
 
 /* CEST = UTC+2. No RTC/DST logic yet (that's the next build step), so
  * this is a fixed offset for display purposes only - not a real
  * timezone conversion. */
 #define LOCAL_TZ_OFFSET_HOURS 2
 
-typedef enum { CONSOLE_IDLE, CONSOLE_EDITING } console_state_t;
+typedef enum { CONSOLE_IDLE, CONSOLE_LED_MENU, CONSOLE_GPS_MENU } console_state_t;
 
 static int heartbeat_task_id = -1;
 static int status_task_id = -1;
 static console_state_t state = CONSOLE_IDLE;
+static uint32_t last_refresh_ms = 0;
 
-/* Polls the console for a completed line (CR/LF-terminated), echoing bytes
- * and handling backspace as they arrive. Returns 1 and NUL-terminates
- * `line` once Enter is pressed on a non-empty line, 0 otherwise. */
-static int console_poll_line(char *line, uint32_t max_len) {
-    static char buf[LINE_BUF_SIZE];
-    static uint32_t len = 0;
-    uint8_t byte;
+static char line_buf[LINE_BUF_SIZE];
+static uint32_t line_len = 0;
 
-    while (uart_read_byte(CONSOLE_UART, &byte)) {
-        if (byte == '\r' || byte == '\n') {
-            uart_write_str(CONSOLE_UART, "\r\n");
-            if (len == 0) continue;
-            buf[len] = '\0';
-            for (uint32_t i = 0; i <= len && i < max_len; i++) line[i] = buf[i];
-            len = 0;
-            return 1;
+static void line_reset(void) {
+    line_len = 0;
+}
+
+/* Feeds one byte into the line buffer, echoing it and handling
+ * backspace. Returns 1 and NUL-terminates `line` once Enter is pressed
+ * on a non-empty line, 0 otherwise. */
+static int console_feed_line_byte(uint8_t byte, char *line, uint32_t max_len) {
+    if (byte == '\r' || byte == '\n') {
+        uart_write_str(CONSOLE_UART, "\r\n");
+        if (line_len == 0) return 0;
+        line_buf[line_len] = '\0';
+        for (uint32_t i = 0; i <= line_len && i < max_len; i++) line[i] = line_buf[i];
+        line_len = 0;
+        return 1;
+    }
+    if (byte == '\b' || byte == 0x7F) {
+        if (line_len > 0) {
+            line_len--;
+            uart_write_str(CONSOLE_UART, "\b \b");
         }
-        if (byte == '\b' || byte == 0x7F) {
-            if (len > 0) {
-                len--;
-                uart_write_str(CONSOLE_UART, "\b \b");
-            }
-            continue;
-        }
-        if (len < LINE_BUF_SIZE - 1) {
-            buf[len++] = (char)byte;
-            uart_write_byte(CONSOLE_UART, byte); /* local echo */
-        }
+        return 0;
+    }
+    if (line_len < LINE_BUF_SIZE - 1) {
+        line_buf[line_len++] = (char)byte;
+        uart_write_byte(CONSOLE_UART, byte); /* local echo */
     }
     return 0;
 }
@@ -87,8 +91,7 @@ static void print_date(uint32_t utc_ddmmyy) {
     write_2digit(yy);
 }
 
-static void print_led_setup_and_data(void) {
-    uart_write_str(CONSOLE_UART, "\r\n-- LED setup and data --\r\n");
+static void print_led_data(void) {
     uart_write_str(CONSOLE_UART, "Heartbeat: interval=");
     uart_write_uint(CONSOLE_UART, SCH_Get_Period(heartbeat_task_id));
     uart_write_str(CONSOLE_UART, "ms  ran=");
@@ -96,7 +99,6 @@ static void print_led_setup_and_data(void) {
     uart_write_str(CONSOLE_UART, " times  last=");
     uart_write_uint(CONSOLE_UART, SCH_Get_Last_Duration_us(heartbeat_task_id));
     uart_write_str(CONSOLE_UART, "us/run\r\n");
-    uart_write_str(CONSOLE_UART, "Enter new blink interval (ms): ");
 }
 
 static void print_gps_dashboard(void) {
@@ -176,6 +178,31 @@ static void print_gps_dashboard(void) {
     uart_write_str(CONSOLE_UART, "\r\n====================================\r\n");
 }
 
+static void enter_led_menu(void) {
+    state = CONSOLE_LED_MENU;
+    line_reset();
+    if (status_task_id >= 0) SCH_Pause_Task(status_task_id);
+    last_refresh_ms = SysTick_GetMillis();
+    uart_write_str(CONSOLE_UART,
+        "\r\n-- LED setup and data (press 'L' again to exit) --\r\n"
+        "Type a number + Enter to set a new blink interval.\r\n");
+    print_led_data();
+}
+
+static void enter_gps_menu(void) {
+    state = CONSOLE_GPS_MENU;
+    if (status_task_id >= 0) SCH_Pause_Task(status_task_id);
+    last_refresh_ms = SysTick_GetMillis();
+    uart_write_str(CONSOLE_UART, "\r\n-- GPS setup and data (press 'G' again to exit) --\r\n");
+    print_gps_dashboard();
+}
+
+static void exit_submenu(void) {
+    state = CONSOLE_IDLE;
+    if (status_task_id >= 0) SCH_Resume_Task(status_task_id);
+    uart_write_str(CONSOLE_UART, "\r\n-- back to main menu --\r\n");
+}
+
 void Console_Task_Init(int heartbeat_id) {
     heartbeat_task_id = heartbeat_id;
     uart_init(CONSOLE_UART, CONSOLE_BAUD);
@@ -186,40 +213,73 @@ void Console_Set_Status_Task(int task_id) {
     status_task_id = task_id;
 }
 
-void Console_Task(void) {
+static void run_idle(void) {
     uint8_t byte;
-
-    if (state == CONSOLE_IDLE) {
-        /* Ignore everything except the mode-entry keys so stray bytes (or
-         * the periodic status output itself) can never be mistaken for
-         * the start of a value. */
-        while (uart_read_byte(CONSOLE_UART, &byte)) {
-            if (byte == 'L' || byte == 'l') {
-                state = CONSOLE_EDITING;
-                if (status_task_id >= 0) SCH_Pause_Task(status_task_id);
-                print_led_setup_and_data();
-                break;
-            }
-            if (byte == 'G' || byte == 'g') {
-                print_gps_dashboard();
-            }
+    /* Ignore everything except the mode-entry keys so stray bytes can
+     * never be mistaken for the start of a value. */
+    while (uart_read_byte(CONSOLE_UART, &byte)) {
+        if (byte == 'L' || byte == 'l') {
+            enter_led_menu();
+            return;
         }
-        return;
+        if (byte == 'G' || byte == 'g') {
+            enter_gps_menu();
+            return;
+        }
+    }
+}
+
+static void run_led_menu(void) {
+    uint8_t byte;
+    while (uart_read_byte(CONSOLE_UART, &byte)) {
+        if (byte == 'L' || byte == 'l') {
+            exit_submenu();
+            return;
+        }
+        char line[LINE_BUF_SIZE];
+        if (console_feed_line_byte(byte, line, sizeof(line))) {
+            uint32_t v = parse_uint(line);
+            if (v > 0) {
+                SCH_Set_Period(heartbeat_task_id, v);
+                uart_write_str(CONSOLE_UART, "OK, blink interval = ");
+                uart_write_uint(CONSOLE_UART, v);
+                uart_write_str(CONSOLE_UART, " ms\r\n");
+            } else {
+                uart_write_str(CONSOLE_UART, "?\r\n");
+            }
+            print_led_data();
+            last_refresh_ms = SysTick_GetMillis();
+        }
     }
 
-    char line[LINE_BUF_SIZE];
-    if (!console_poll_line(line, sizeof(line))) return;
+    uint32_t now = SysTick_GetMillis();
+    if ((int32_t)(now - last_refresh_ms) >= SUBMENU_REFRESH_MS) {
+        last_refresh_ms = now;
+        print_led_data();
+    }
+}
 
-    uint32_t v = parse_uint(line);
-    if (v > 0) {
-        SCH_Set_Period(heartbeat_task_id, v);
-        uart_write_str(CONSOLE_UART, "OK, blink interval = ");
-        uart_write_uint(CONSOLE_UART, v);
-        uart_write_str(CONSOLE_UART, " ms\r\n");
-    } else {
-        uart_write_str(CONSOLE_UART, "?\r\n");
+static void run_gps_menu(void) {
+    uint8_t byte;
+    while (uart_read_byte(CONSOLE_UART, &byte)) {
+        if (byte == 'G' || byte == 'g') {
+            exit_submenu();
+            return;
+        }
+        /* view-only: any other key is ignored */
     }
 
-    state = CONSOLE_IDLE;
-    if (status_task_id >= 0) SCH_Resume_Task(status_task_id);
+    uint32_t now = SysTick_GetMillis();
+    if ((int32_t)(now - last_refresh_ms) >= SUBMENU_REFRESH_MS) {
+        last_refresh_ms = now;
+        print_gps_dashboard();
+    }
+}
+
+void Console_Task(void) {
+    switch (state) {
+        case CONSOLE_IDLE: run_idle(); break;
+        case CONSOLE_LED_MENU: run_led_menu(); break;
+        case CONSOLE_GPS_MENU: run_gps_menu(); break;
+    }
 }
