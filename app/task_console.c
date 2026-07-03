@@ -127,7 +127,13 @@ static void print_gps_dashboard(void) {
     uart_write_str(CONSOLE_UART, "RTC clock:  ");
     uart_write_str(CONSOLE_UART, rtc_clock_source_str());
     uart_write_str(CONSOLE_UART, ", ");
-    uart_write_str(CONSOLE_UART, Task_GPS_RTC_Synced() ? "synced from GPS" : "not yet synced");
+    if (Task_GPS_RTC_Synced()) {
+        uart_write_str(CONSOLE_UART, "last synced ");
+        uart_write_uint(CONSOLE_UART, Task_GPS_Ms_Since_Sync() / 1000);
+        uart_write_str(CONSOLE_UART, "s ago");
+    } else {
+        uart_write_str(CONSOLE_UART, "not yet synced");
+    }
     uart_write_str(CONSOLE_UART, "\r\n------------------------------------\r\n");
 
     uart_write_str(CONSOLE_UART, "FIX:       ");
