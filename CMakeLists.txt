@@ -45,6 +45,8 @@ set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/core/main.c
 	${CMAKE_CURRENT_SOURCE_DIR}/core/system_clock.c
 	${CMAKE_CURRENT_SOURCE_DIR}/core/systick.c
+	${CMAKE_CURRENT_SOURCE_DIR}/drivers/uart.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/scheduler.c
 )
 
 # Include directories for all compilers

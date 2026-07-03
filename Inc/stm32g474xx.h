@@ -184,7 +184,24 @@ typedef struct {
 #define USART_ISR_TC           (1UL << 6)  /* Transmission Complete */
 #define USART_ISR_TXE          (1UL << 7)  /* Transmit Data Register Empty */
 
-/* ── SysTick ────────────────────────────────────────────────────────────── 
+#define USART_ICR_ORECF        (1UL << 3)  /* Overrun Error Clear Flag */
+
+/* ── NVIC (Nested Vectored Interrupt Controller) ───────────────────────────
+   Core peripheral that enables/masks individual IRQ lines. ISER[n] holds
+   IRQs 32*n .. 32*n+31; write a 1 bit to enable that IRQ.
+*/
+typedef struct {
+    __IO uint32_t ISER[8];       /* 0x00: Interrupt Set-Enable Registers */
+} NVIC_TypeDef;
+
+#define NVIC_BASE           (0xE000E100UL)
+#define NVIC                ((NVIC_TypeDef *) NVIC_BASE)
+
+#define NVIC_EnableIRQ(irqn)   (NVIC->ISER[(irqn) >> 5] = (1UL << ((irqn) & 0x1F)))
+
+#define USART2_IRQn         38
+
+/* ── SysTick ──────────────────────────────────────────────────────────────
    A simple 24-bit down-counter inside the ARM Cortex-M core used for 
    generating periodic interrupts (our OS Tick).
 */
