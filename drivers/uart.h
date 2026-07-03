@@ -22,6 +22,11 @@ void uart_write_str(USART_TypeDef *uart, const char *s);
 void uart_write_uint(USART_TypeDef *uart, uint32_t v);
 void uart_write_int(USART_TypeDef *uart, int32_t v);
 
+/* Writes v as a fixed-point decimal with `decimals` implied fractional
+ * digits, e.g. uart_write_fixed(u, 460569911, 7) prints "46.0569911".
+ * Integer math only, no floats. */
+void uart_write_fixed(USART_TypeDef *uart, int32_t v, uint32_t decimals);
+
 /* Non-blocking. Returns 1 and stores the byte in *out if one was available. */
 int uart_read_byte(USART_TypeDef *uart, uint8_t *out);
 

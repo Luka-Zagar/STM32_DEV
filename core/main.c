@@ -17,10 +17,10 @@ int main(void) {
     int console_task_id = SCH_Add_Task(Console_Task, 0, 10);
 
     Task_GPS_Init();
-    SCH_Add_Task(Task_GPS, 0, 10);
+    int gps_task_id = SCH_Add_Task(Task_GPS, 0, 10);
 
     int status_task_id = SCH_Add_Task(Task_Status, 3000, 3000);
-    Task_Status_Init(heartbeat_task_id, console_task_id);
+    Task_Status_Init(heartbeat_task_id, console_task_id, gps_task_id);
     Console_Set_Status_Task(status_task_id);
 
     while (1) {

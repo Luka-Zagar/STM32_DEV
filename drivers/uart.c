@@ -99,6 +99,27 @@ void uart_write_int(USART_TypeDef *uart, int32_t v) {
     uart_write_uint(uart, (uint32_t)v);
 }
 
+void uart_write_fixed(USART_TypeDef *uart, int32_t v, uint32_t decimals) {
+    uint32_t scale = 1;
+    for (uint32_t i = 0; i < decimals; i++) scale *= 10;
+
+    if (v < 0) {
+        uart_write_byte(uart, '-');
+        v = -v;
+    }
+
+    uint32_t int_part = (uint32_t)v / scale;
+    uint32_t frac_part = (uint32_t)v % scale;
+
+    uart_write_uint(uart, int_part);
+    if (decimals == 0) return;
+
+    uart_write_byte(uart, '.');
+    for (uint32_t p = scale / 10; p > 0; p /= 10) {
+        uart_write_byte(uart, (uint8_t)('0' + (frac_part / p) % 10));
+    }
+}
+
 int uart_read_byte(USART_TypeDef *uart, uint8_t *out) {
     int slot = uart_slot(uart);
     if (slot < 0) return 0;
