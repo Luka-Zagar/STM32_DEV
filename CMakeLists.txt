@@ -45,6 +45,7 @@ set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
 	${CMAKE_CURRENT_SOURCE_DIR}/Src/system_stm32g4xx.c
 	${CMAKE_CURRENT_SOURCE_DIR}/Src/scheduler.c
+	${CMAKE_CURRENT_SOURCE_DIR}/Src/esp8266.c
 )
 
 # Include directories for all compilers

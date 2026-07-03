@@ -12,6 +12,12 @@
  */
 
 void SystemInit(void) {
+    /* 0. Enable FPU (Floating Point Unit) 
+       This is required for printf, float math, and atof. */
+    #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+        SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
+    #endif
+
     /* 1. Enable HSI (High Speed Internal) 16MHz oscillator */
     RCC->CR |= RCC_CR_HSION;
     while (!(RCC->CR & RCC_CR_HSIRDY)); /* Wait until HSI is stable */

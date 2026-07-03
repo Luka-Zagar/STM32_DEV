@@ -1,50 +1,75 @@
 #include "stm32g474xx.h"
 #include "scheduler.h"
+#include <stdio.h>
+#include <string.h>
+#include "esp8266.h"
 
 /**
  ******************************************************************************
  * @file        main.c
- * @project     EURUS — Environmental Urban Roaming Unified Sensoring
- * @author      Luka Zagar (student at University of Ljubljana, Faculty of Electrical Engineering)
- * 
- * @date        5th April 2026
- * @brief       Application logic using the modular scheduler.
- *
- * @board       NUCLEO-G474RE
- * @mcu         STM32G474RET6 — ARM Cortex-M4 @ 170MHz, 512KB Flash, 128KB RAM
- *
+ * @brief       EURUS Main Logic - MQTT Sensor Node
  ******************************************************************************
  */
 
-/* ── Application Tasks ───────────────────────────────────────────────────── */
-
-// Heartbeat Task: Toggles onboard and external LEDs.
-void Heartbeat_Task(void) {
-
-    GPIOA->ODR ^= GPIO_ODR_5; /* LD2 (Green onboard LED) */
-    GPIOB->ODR ^= GPIO_ODR_0; /* External LED on PB0 */
+int __io_putchar(int ch) {
+    while (!(USART2->ISR & USART_ISR_TXE));
+    USART2->TDR = ch;
+    return ch;
 }
 
-/* ── Main Entry Point ───────────────────────────────────────────────────── */
+void UART2_Init(void) {
+    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN;
+    RCC->APB1ENR1 |= RCC_APB1ENR1_USART2EN;
+    GPIOA->MODER &= ~(3UL << (2 * 2)); GPIOA->MODER |= (2UL << (2 * 2));
+    GPIOA->AFR[0] &= ~(0xF << (2 * 4)); GPIOA->AFR[0] |= (7UL << (2 * 4));
+    GPIOA->MODER &= ~(3UL << (3 * 2)); GPIOA->MODER |= (2UL << (3 * 2));
+    GPIOA->AFR[0] &= ~(0xF << (3 * 4)); GPIOA->AFR[0] |= (7UL << (3 * 4));
+    USART2->BRR = 1476;
+    USART2->CR1 = USART_CR1_UE | USART_CR1_RE | USART_CR1_TE;
+}
+
+void Heartbeat_Task(void) {
+    GPIOA->ODR ^= GPIO_ODR_5;
+    GPIOB->ODR ^= GPIO_ODR_0;
+}
+
+/* Add this task function above main() */
+void Sensor_Task(void) {
+    if (!ESP_IsReady()) return;
+
+    /* Generate dummy data (Seed using SysTick) */
+    static uint32_t seed = 0;
+    if (seed == 0) seed = SYSTICK->VAL;
+    
+    float temp     = 20.0f  + (float)(seed % 100) / 10.0f;
+    float pressure = 980.0f + (float)(seed % 400) / 10.0f;
+    float humidity = 40.0f  + (float)(seed % 200) / 10.0f;
+    float gas      = 100.0f + (float)(seed % 4000) / 10.0f;
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff; // LCG
+
+    ESP_Publish_SensorData(temp, pressure, humidity, gas);
+    printf("MQTT: Sent Sensor Data (T:%.1f, P:%.1f, H:%.1f, G:%.1f)\r\n", 
+           temp, pressure, humidity, gas);
+}
 
 int main(void) {
-    // 1. Hardware Initialization (Register Level)
-    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN;
-
+    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN | RCC_AHB2ENR_GPIOCEN;
+    
+    /* LED pins */
     GPIOA->MODER &= ~(3UL << (5 * 2)); GPIOA->MODER |= (1UL << (5 * 2));
     GPIOB->MODER &= ~(3UL << (0 * 2)); GPIOB->MODER |= (1UL << (0 * 2));
 
+    UART2_Init();
+    printf("\r\n--- EURUS MQTT Node ---\r\n");
 
-    // 2. Initialize the OS Scheduler (Running at 170MHz)
+    ESP_Init();
     SCH_Init(170000000);
-
-    // 3. Add Application Tasks
+    
     SCH_Add_Task(Heartbeat_Task, 0, 500);
+    SCH_Add_Task(ESP_Task, 0, 100);        /* Run ESP state machine every 100ms */
+    SCH_Add_Task(Sensor_Task, 1000, 10000); /* Runs every 10 seconds */
 
-    // 4. Start the OS
     SCH_Start();
-
-    // 5. The Dispatch Loop
     while (1) {
         SCH_Dispatch_Tasks();
     }
