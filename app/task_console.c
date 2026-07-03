@@ -7,7 +7,11 @@
 #define CONSOLE_BAUD 115200
 #define LINE_BUF_SIZE 32
 
+typedef enum { CONSOLE_IDLE, CONSOLE_EDITING } console_state_t;
+
 static int heartbeat_task_id = -1;
+static int status_task_id = -1;
+static console_state_t state = CONSOLE_IDLE;
 
 /* Polls the console for a completed line (CR/LF-terminated), echoing bytes
  * and handling backspace as they arrive. Returns 1 and NUL-terminates
@@ -51,11 +55,32 @@ void Console_Task_Init(int heartbeat_id) {
     heartbeat_task_id = heartbeat_id;
     uart_init(CONSOLE_UART, CONSOLE_BAUD);
     uart_write_str(CONSOLE_UART,
-        "\r\nEkoSonda console ready. Type a number + Enter to set the "
-        "blink interval in ms.\r\n> ");
+        "\r\nEkoSonda console ready. Press 'S' to set the blink "
+        "interval.\r\n");
+}
+
+void Console_Set_Status_Task(int task_id) {
+    status_task_id = task_id;
 }
 
 void Console_Task(void) {
+    uint8_t byte;
+
+    if (state == CONSOLE_IDLE) {
+        /* Ignore everything except the mode-entry key so stray bytes (or
+         * the periodic status output itself) can never be mistaken for
+         * the start of a value. */
+        while (uart_read_byte(CONSOLE_UART, &byte)) {
+            if (byte == 'S' || byte == 's') {
+                state = CONSOLE_EDITING;
+                if (status_task_id >= 0) SCH_Pause_Task(status_task_id);
+                uart_write_str(CONSOLE_UART, "\r\nEnter blink interval (ms): ");
+                break;
+            }
+        }
+        return;
+    }
+
     char line[LINE_BUF_SIZE];
     if (!console_poll_line(line, sizeof(line))) return;
 
@@ -64,8 +89,11 @@ void Console_Task(void) {
         SCH_Set_Period(heartbeat_task_id, v);
         uart_write_str(CONSOLE_UART, "OK, blink interval = ");
         uart_write_uint(CONSOLE_UART, v);
-        uart_write_str(CONSOLE_UART, " ms\r\n> ");
+        uart_write_str(CONSOLE_UART, " ms\r\n");
     } else {
-        uart_write_str(CONSOLE_UART, "?\r\n> ");
+        uart_write_str(CONSOLE_UART, "?\r\n");
     }
+
+    state = CONSOLE_IDLE;
+    if (status_task_id >= 0) SCH_Resume_Task(status_task_id);
 }

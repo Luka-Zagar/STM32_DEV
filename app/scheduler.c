@@ -48,6 +48,17 @@ void SCH_Set_Period(int task_id, uint32_t period_ms) {
     tasks[task_id].period_ms = period_ms;
 }
 
+void SCH_Pause_Task(int task_id) {
+    if (task_id < 0 || task_id >= task_count) return;
+    tasks[task_id].active = 0;
+}
+
+void SCH_Resume_Task(int task_id) {
+    if (task_id < 0 || task_id >= task_count) return;
+    tasks[task_id].next_run_ms = SysTick_GetMillis() + tasks[task_id].period_ms;
+    tasks[task_id].active = 1;
+}
+
 void SCH_Dispatch(void) {
     uint32_t now = SysTick_GetMillis();
 

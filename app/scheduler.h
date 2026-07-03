@@ -18,6 +18,15 @@ int SCH_Add_Task(sch_task_fn_t fn, uint32_t delay_ms, uint32_t period_ms);
  * next scheduled run. */
 void SCH_Set_Period(int task_id, uint32_t period_ms);
 
+/* Stops a task from being dispatched at all (run count stops advancing)
+ * until SCH_Resume_Task is called. */
+void SCH_Pause_Task(int task_id);
+
+/* Resumes a paused task, scheduling its next run one period from now
+ * (not immediately, and not a burst of catch-up runs for time missed
+ * while paused). */
+void SCH_Resume_Task(int task_id);
+
 /* Call repeatedly from the main loop. Runs any task that has come due.
  * Never blocks; never call from an ISR. */
 void SCH_Dispatch(void);

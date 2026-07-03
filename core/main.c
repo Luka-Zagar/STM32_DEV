@@ -15,8 +15,9 @@ int main(void) {
     Console_Task_Init(heartbeat_task_id);
     int console_task_id = SCH_Add_Task(Console_Task, 0, 10);
 
+    int status_task_id = SCH_Add_Task(Task_Status, 3000, 3000);
     Task_Status_Init(heartbeat_task_id, console_task_id);
-    SCH_Add_Task(Task_Status, 3000, 3000);
+    Console_Set_Status_Task(status_task_id);
 
     while (1) {
         SCH_Dispatch();

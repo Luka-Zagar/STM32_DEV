@@ -6,6 +6,11 @@
  * "<number>\r\n" line comes in. */
 void Console_Task_Init(int heartbeat_task_id);
 
+/* Lets the console pause/resume the status task while a value is being
+ * entered, so the periodic status print can't interleave with typed
+ * input. Call once after both tasks are registered. */
+void Console_Set_Status_Task(int status_task_id);
+
 /* Register with the scheduler. Polls for a completed line and, if it
  * parses as a positive number, updates the heartbeat task's period. */
 void Console_Task(void);
