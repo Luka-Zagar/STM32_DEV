@@ -27,8 +27,6 @@ set(linker_script_SRC ${linker_script_SRC}
 
 # Sources
 set(sources_SRCS ${sources_SRCS}
-	${CMAKE_CURRENT_SOURCE_DIR}/core/syscall.c
-	${CMAKE_CURRENT_SOURCE_DIR}/core/sysmem.c
 	${CMAKE_CURRENT_SOURCE_DIR}/core/startup_stm32g474xx.S
 )
 
