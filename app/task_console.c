@@ -125,10 +125,30 @@ static void print_gps_dashboard(void) {
 
     uart_write_str(CONSOLE_UART, "Antenna:   ");
     switch (fix->antenna_status) {
-        case GPS_ANTENNA_OK:    uart_write_str(CONSOLE_UART, "OK"); break;
-        case GPS_ANTENNA_OPEN:  uart_write_str(CONSOLE_UART, "OPEN (check wiring!)"); break;
-        case GPS_ANTENNA_SHORT: uart_write_str(CONSOLE_UART, "SHORT (check wiring!)"); break;
-        default:                uart_write_str(CONSOLE_UART, "unknown"); break;
+        case GPS_ANTENNA_OK:
+            uart_write_str(CONSOLE_UART, "OK");
+            break;
+        case GPS_ANTENNA_OPEN:
+            uart_write_str(CONSOLE_UART, "OPEN");
+            if (fix->fix_type >= 2) {
+                /* A real open-antenna fault would starve the receiver of
+                 * signal - it wouldn't hold a 2D/3D fix. Seeing both at
+                 * once means the flag itself is the wrong signal here,
+                 * a known false-positive on some NEO-8M clones. */
+                uart_write_str(CONSOLE_UART,
+                    " (likely false positive - clone modules sometimes "
+                    "misreport this despite a working antenna; you have "
+                    "a fix, so it's probably fine)");
+            } else {
+                uart_write_str(CONSOLE_UART, " (check wiring!)");
+            }
+            break;
+        case GPS_ANTENNA_SHORT:
+            uart_write_str(CONSOLE_UART, "SHORT (check wiring!)");
+            break;
+        default:
+            uart_write_str(CONSOLE_UART, "unknown");
+            break;
     }
     uart_write_str(CONSOLE_UART, "\r\n");
 
