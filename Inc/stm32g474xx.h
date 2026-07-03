@@ -79,6 +79,9 @@ typedef struct {
     __IO uint32_t APB2RSTR;      /* 0x80: APB2 Peripheral Reset Register */
     __IO uint32_t Reserved5;     /* 0x84: Reserved */
     __IO uint32_t CCIPR;         /* 0x88: Peripheral Independent Clock Config Register */
+    __IO uint32_t Reserved6;     /* 0x8C: Reserved */
+    __IO uint32_t BDCR;          /* 0x90: Backup Domain Control Register (LSE, RTC clock select) */
+    __IO uint32_t CSR;           /* 0x94: Control/Status Register (LSI, reset flags) */
 } RCC_TypeDef;
 
 #define RCC_BASE            (0x40021000UL)
@@ -87,6 +90,19 @@ typedef struct {
 /* RCC Bit Definitions */
 #define RCC_CR_HSION        (1UL << 8)   /* Internal High Speed clock enable */
 #define RCC_CR_HSIRDY       (1UL << 10)  /* Internal High Speed clock ready flag */
+
+#define RCC_BDCR_LSEON       (1UL << 0)  /* External Low Speed (32.768kHz crystal) oscillator enable */
+#define RCC_BDCR_LSERDY      (1UL << 1)  /* LSE ready flag */
+#define RCC_BDCR_RTCSEL_Msk  (3UL << 8)  /* RTC clock source select mask */
+#define RCC_BDCR_RTCSEL_LSE  (1UL << 8)  /* Select LSE as RTC clock */
+#define RCC_BDCR_RTCSEL_LSI  (2UL << 8)  /* Select LSI as RTC clock */
+#define RCC_BDCR_RTCEN       (1UL << 15) /* RTC clock enable */
+#define RCC_BDCR_BDRST       (1UL << 16) /* Backup domain software reset */
+
+#define RCC_CSR_LSION        (1UL << 0)  /* Internal Low Speed (~32kHz RC) oscillator enable */
+#define RCC_CSR_LSIRDY       (1UL << 1)  /* LSI ready flag */
+
+#define RCC_APB1ENR1_PWREN   (1UL << 28) /* Enable Clock for PWR (needed to unlock backup domain) */
 #define RCC_CR_PLLON        (1UL << 24)  /* Main PLL enable */
 #define RCC_CR_PLLRDY       (1UL << 25)  /* Main PLL ready flag */
 
@@ -120,6 +136,42 @@ typedef struct {
 #define FLASH_ACR_PRFTEN       (1UL << 8) /* Prefetch Enable (Performance) */
 #define FLASH_ACR_ICEN         (1UL << 9) /* Instruction Cache Enable */
 #define FLASH_ACR_DCEN         (1UL << 10)/* Data Cache Enable */
+
+/* ── PWR (Power Control) ────────────────────────────────────────────────────
+   Only needed here to unlock write access to the backup domain (LSE/BDCR/
+   RTC registers), which is protected by default to avoid accidental writes
+   to the battery-backed area.
+*/
+typedef struct {
+    __IO uint32_t CR1;           /* 0x00: Power Control Register 1 */
+} PWR_TypeDef;
+
+#define PWR_BASE            (0x40007000UL)
+#define PWR                 ((PWR_TypeDef *) PWR_BASE)
+
+#define PWR_CR1_DBP            (1UL << 8) /* Disable Backup domain write Protection */
+
+/* ── RTC (Real-Time Clock) ──────────────────────────────────────────────────
+   BCD calendar clocked from LSE (or LSI as a fallback), independent of the
+   core clock so it keeps time across a reset (with a backup battery on
+   VBAT - without one it resets along with everything else on this devboard).
+*/
+typedef struct {
+    __IO uint32_t TR;            /* 0x00: Time register (BCD HH:MM:SS) */
+    __IO uint32_t DR;            /* 0x04: Date register (BCD YY-MM-DD + weekday) */
+    __IO uint32_t CR;            /* 0x08: Control register */
+    __IO uint32_t ISR;           /* 0x0C: Initialization and status register */
+    __IO uint32_t PRER;          /* 0x10: Prescaler register */
+    __IO uint32_t Reserved0[4];  /* 0x14-0x20: WUTR, ALRMAR, ALRMBR, SSR - unused */
+    __IO uint32_t WPR;           /* 0x24: Write protection register */
+} RTC_TypeDef;
+
+#define RTC_BASE            (0x40002800UL)
+#define RTC                 ((RTC_TypeDef *) RTC_BASE)
+
+#define RTC_ISR_RSF            (1UL << 5)  /* Registers Synchronized Flag */
+#define RTC_ISR_INITF          (1UL << 6)  /* Init mode entered flag */
+#define RTC_ISR_INIT           (1UL << 7)  /* Enter Initialization mode */
 
 /* ── GPIO (General Purpose I/O) ───────────────────────────────────────────── 
    Each port (A, B, C...) has its own set of these registers.

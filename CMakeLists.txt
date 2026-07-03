@@ -46,6 +46,7 @@ set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/core/system_clock.c
 	${CMAKE_CURRENT_SOURCE_DIR}/core/systick.c
 	${CMAKE_CURRENT_SOURCE_DIR}/drivers/uart.c
+	${CMAKE_CURRENT_SOURCE_DIR}/drivers/rtc.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/scheduler.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_console.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_heartbeat.c

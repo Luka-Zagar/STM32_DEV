@@ -4,15 +4,16 @@
 #include "uart.h"
 #include "scheduler.h"
 #include "gps_neo8m.h"
+#include "rtc.h"
+#include "task_gps.h"
 
 #define CONSOLE_UART USART2
 #define CONSOLE_BAUD 115200
 #define LINE_BUF_SIZE 32
 #define SUBMENU_REFRESH_MS 1000
 
-/* CEST = UTC+2. No RTC/DST logic yet (that's the next build step), so
- * this is a fixed offset for display purposes only - not a real
- * timezone conversion. */
+/* CEST = UTC+2. The RTC itself keeps UTC (set from GPS); this is just a
+ * fixed display-time offset, not real timezone/DST handling. */
 #define LOCAL_TZ_OFFSET_HOURS 2
 
 typedef enum { CONSOLE_IDLE, CONSOLE_LED_MENU, CONSOLE_GPS_MENU } console_state_t;
@@ -66,29 +67,31 @@ static void write_2digit(uint32_t v) {
     uart_write_uint(CONSOLE_UART, v);
 }
 
-/* utc_hhmmss is HHMMSS as decimal (e.g. 91114 = 09:11:14). Applies the
- * fixed CEST offset above; does not roll the date over midnight. */
-static void print_local_time(uint32_t utc_hhmmss) {
-    uint32_t hh = (utc_hhmmss / 10000 + LOCAL_TZ_OFFSET_HOURS) % 24;
-    uint32_t mm = (utc_hhmmss / 100) % 100;
-    uint32_t ss = utc_hhmmss % 100;
+/* Applies the fixed CEST offset above; does not roll the date over
+ * midnight if the offset crosses one. */
+static void print_local_time(const rtc_datetime_t *dt) {
+    uint32_t hh = ((uint32_t)dt->hour + LOCAL_TZ_OFFSET_HOURS) % 24;
     write_2digit(hh);
     uart_write_byte(CONSOLE_UART, ':');
-    write_2digit(mm);
+    write_2digit(dt->min);
     uart_write_byte(CONSOLE_UART, ':');
-    write_2digit(ss);
+    write_2digit(dt->sec);
 }
 
-/* utc_ddmmyy is DDMMYY as decimal, printed as DD.MM.20YY. */
-static void print_date(uint32_t utc_ddmmyy) {
-    uint32_t dd = utc_ddmmyy / 10000;
-    uint32_t mm = (utc_ddmmyy / 100) % 100;
-    uint32_t yy = utc_ddmmyy % 100;
-    write_2digit(dd);
+static void print_date(const rtc_datetime_t *dt) {
+    write_2digit(dt->day);
     uart_write_byte(CONSOLE_UART, '.');
-    write_2digit(mm);
-    uart_write_str(CONSOLE_UART, ".20");
-    write_2digit(yy);
+    write_2digit(dt->month);
+    uart_write_byte(CONSOLE_UART, '.');
+    uart_write_uint(CONSOLE_UART, dt->year);
+}
+
+static const char *rtc_clock_source_str(void) {
+    switch (rtc_get_clock_source()) {
+        case RTC_CLK_LSE: return "LSE";
+        case RTC_CLK_LSI: return "LSI, no LSE crystal detected";
+        default: return "NONE - RTC not running";
+    }
 }
 
 static void print_led_data(void) {
@@ -108,14 +111,23 @@ static void print_gps_dashboard(void) {
                        fix->sats_in_view[GPS_CONST_GALILEO] +
                        fix->sats_in_view[GPS_CONST_BEIDOU];
 
+    rtc_datetime_t dt;
+    rtc_get_datetime(&dt);
+
     uart_write_str(CONSOLE_UART, "\r\n=== EkoSonda GPS Dashboard ===\r\n");
 
     uart_write_str(CONSOLE_UART, "Local Time: ");
-    print_local_time(fix->utc_time);
-    uart_write_str(CONSOLE_UART, " (CEST, UTC+2 assumed - no RTC yet)\r\n");
+    print_local_time(&dt);
+    uart_write_str(CONSOLE_UART, " (CEST, UTC+2 assumed)\r\n");
 
     uart_write_str(CONSOLE_UART, "Local Date: ");
-    print_date(fix->utc_date);
+    print_date(&dt);
+    uart_write_str(CONSOLE_UART, "\r\n");
+
+    uart_write_str(CONSOLE_UART, "RTC clock:  ");
+    uart_write_str(CONSOLE_UART, rtc_clock_source_str());
+    uart_write_str(CONSOLE_UART, ", ");
+    uart_write_str(CONSOLE_UART, Task_GPS_RTC_Synced() ? "synced from GPS" : "not yet synced");
     uart_write_str(CONSOLE_UART, "\r\n------------------------------------\r\n");
 
     uart_write_str(CONSOLE_UART, "FIX:       ");
