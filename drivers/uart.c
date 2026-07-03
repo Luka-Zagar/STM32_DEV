@@ -66,6 +66,18 @@ void uart_write_str(USART_TypeDef *uart, const char *s) {
     }
 }
 
+void uart_write_uint(USART_TypeDef *uart, uint32_t v) {
+    char digits[10];
+    int n = 0;
+    do {
+        digits[n++] = (char)('0' + v % 10);
+        v /= 10;
+    } while (v);
+    while (n > 0) {
+        uart_write_byte(uart, (uint8_t)digits[--n]);
+    }
+}
+
 int uart_read_byte(USART_TypeDef *uart, uint8_t *out) {
     int slot = uart_slot(uart);
     if (slot < 0) return 0;

@@ -22,4 +22,10 @@ void SCH_Set_Period(int task_id, uint32_t period_ms);
  * Never blocks; never call from an ISR. */
 void SCH_Dispatch(void);
 
+/* Introspection, e.g. for a status/telemetry task. Return 0 for an
+ * invalid task_id. */
+uint32_t SCH_Get_Period(int task_id);
+uint32_t SCH_Get_Run_Count(int task_id);
+uint32_t SCH_Get_Last_Duration_us(int task_id);
+
 #endif /* SCHEDULER_H */

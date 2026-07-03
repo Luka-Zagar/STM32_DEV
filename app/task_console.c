@@ -47,16 +47,6 @@ static uint32_t parse_uint(const char *s) {
     return v;
 }
 
-static void write_uint(uint32_t v) {
-    char digits[10];
-    int n = 0;
-    do {
-        digits[n++] = (char)('0' + v % 10);
-        v /= 10;
-    } while (v);
-    while (n > 0) uart_write_byte(CONSOLE_UART, (uint8_t)digits[--n]);
-}
-
 void Console_Task_Init(int heartbeat_id) {
     heartbeat_task_id = heartbeat_id;
     uart_init(CONSOLE_UART, CONSOLE_BAUD);
@@ -73,7 +63,7 @@ void Console_Task(void) {
     if (v > 0) {
         SCH_Set_Period(heartbeat_task_id, v);
         uart_write_str(CONSOLE_UART, "OK, blink interval = ");
-        write_uint(v);
+        uart_write_uint(CONSOLE_UART, v);
         uart_write_str(CONSOLE_UART, " ms\r\n> ");
     } else {
         uart_write_str(CONSOLE_UART, "?\r\n> ");

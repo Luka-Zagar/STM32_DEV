@@ -201,6 +201,24 @@ typedef struct {
 
 #define USART2_IRQn         38
 
+/* ── DWT (Data Watchpoint and Trace) ───────────────────────────────────────
+   Core debug peripheral with a free-running cycle counter, used to time
+   how long scheduler tasks actually take. Must enable tracing via DEMCR
+   (a single core register, not part of the DWT block) before CYCCNT counts.
+*/
+#define DEMCR               (*(volatile uint32_t *) 0xE000EDFCUL)
+#define DEMCR_TRCENA        (1UL << 24)
+
+typedef struct {
+    __IO uint32_t CTRL;          /* 0x00: Control */
+    __IO uint32_t CYCCNT;        /* 0x04: Free-running cycle counter */
+} DWT_TypeDef;
+
+#define DWT_BASE            (0xE0001000UL)
+#define DWT                 ((DWT_TypeDef *) DWT_BASE)
+
+#define DWT_CTRL_CYCCNTENA  (1UL << 0)
+
 /* ── SysTick ──────────────────────────────────────────────────────────────
    A simple 24-bit down-counter inside the ARM Cortex-M core used for 
    generating periodic interrupts (our OS Tick).
