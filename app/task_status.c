@@ -2,6 +2,7 @@
 #include "stm32g474xx.h"
 #include "uart.h"
 #include "scheduler.h"
+#include "gps_neo8m.h"
 
 #define STATUS_UART USART2
 
@@ -24,10 +25,25 @@ static void print_task_line(const char *name, int task_id) {
     uart_write_str(STATUS_UART, "us/run\r\n");
 }
 
+static void print_gps_line(void) {
+    const gps_fix_t *fix = gps_get_fix();
+    uart_write_str(STATUS_UART, "GPS: fix=");
+    uart_write_str(STATUS_UART, fix->fix_valid ? "yes" : "no");
+    uart_write_str(STATUS_UART, "  sats=");
+    uart_write_uint(STATUS_UART, fix->num_sats);
+    uart_write_str(STATUS_UART, "  lat_e7=");
+    uart_write_int(STATUS_UART, fix->lat_e7);
+    uart_write_str(STATUS_UART, "  lon_e7=");
+    uart_write_int(STATUS_UART, fix->lon_e7);
+    uart_write_str(STATUS_UART, "\r\n");
+}
+
 void Task_Status(void) {
     uart_write_str(STATUS_UART, "\n\r---------------------------------------------------------------\r");
     uart_write_str(STATUS_UART, "\n\rEkoSonda RTOS Running manager \r\n");
-    uart_write_str(STATUS_UART, "\r * Press 'S' to set the blink interval \r\n\n");
+    uart_write_str(STATUS_UART, "\r * Press 'S' to set the blink interval \r\n");
+    uart_write_str(STATUS_UART, "\r * Press 'G' for the current GPS fix \r\n\n");
     print_task_line("Task 1 (Heartbeat)", heartbeat_id);
     print_task_line("Task 2 (Console)", console_id);
+    print_gps_line();
 }

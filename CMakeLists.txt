@@ -50,6 +50,8 @@ set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_console.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_heartbeat.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_status.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/task_gps.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/gps_neo8m.c
 )
 
 # Include directories for all compilers

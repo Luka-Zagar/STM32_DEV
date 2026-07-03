@@ -9,16 +9,25 @@ typedef struct {
     volatile uint16_t tail;
 } uart_rxbuf_t;
 
-/* Slot 0 = USART2. Extend as USART1 (GPS) / USART3 (ESP8266) get wired. */
-static uart_rxbuf_t rx_bufs[1];
+/* Slot 0 = USART1 (GPS), slot 1 = USART2 (console). Extend as USART3
+ * (ESP8266) gets wired. */
+static uart_rxbuf_t rx_bufs[2];
 
 static int uart_slot(USART_TypeDef *uart) {
-    if (uart == USART2) return 0;
+    if (uart == USART1) return 0;
+    if (uart == USART2) return 1;
     return -1;
 }
 
 static void uart_gpio_init(USART_TypeDef *uart) {
-    if (uart == USART2) {
+    if (uart == USART1) {
+        /* PC4 = TX, PC5 = RX, AF7 - to the GPS module (NEO-8M) */
+        RCC->AHB2ENR |= RCC_AHB2ENR_GPIOCEN;
+        GPIOC->MODER &= ~((3UL << (4 * 2)) | (3UL << (5 * 2)));
+        GPIOC->MODER |= (2UL << (4 * 2)) | (2UL << (5 * 2));
+        GPIOC->AFR[0] &= ~((0xFUL << (4 * 4)) | (0xFUL << (5 * 4)));
+        GPIOC->AFR[0] |= (7UL << (4 * 4)) | (7UL << (5 * 4));
+    } else if (uart == USART2) {
         /* PA2 = TX, PA3 = RX, AF7 - routed to the ST-LINK VCP on Nucleo-G474RE */
         RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN;
         GPIOA->MODER &= ~((3UL << (2 * 2)) | (3UL << (3 * 2)));
@@ -34,7 +43,9 @@ void uart_init(USART_TypeDef *uart, uint32_t baud) {
 
     uart_gpio_init(uart);
 
-    if (uart == USART2) {
+    if (uart == USART1) {
+        RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
+    } else if (uart == USART2) {
         RCC->APB1ENR1 |= RCC_APB1ENR1_USART2EN;
     }
 
@@ -44,7 +55,9 @@ void uart_init(USART_TypeDef *uart, uint32_t baud) {
     uart->BRR = (SYSTEM_CLOCK_HZ + baud / 2) / baud;
     uart->CR1 = USART_CR1_UE | USART_CR1_RE | USART_CR1_TE | USART_CR1_RXNEIE;
 
-    if (uart == USART2) {
+    if (uart == USART1) {
+        NVIC_EnableIRQ(USART1_IRQn);
+    } else if (uart == USART2) {
         NVIC_EnableIRQ(USART2_IRQn);
     }
 }
@@ -78,6 +91,14 @@ void uart_write_uint(USART_TypeDef *uart, uint32_t v) {
     }
 }
 
+void uart_write_int(USART_TypeDef *uart, int32_t v) {
+    if (v < 0) {
+        uart_write_byte(uart, '-');
+        v = -v;
+    }
+    uart_write_uint(uart, (uint32_t)v);
+}
+
 int uart_read_byte(USART_TypeDef *uart, uint8_t *out) {
     int slot = uart_slot(uart);
     if (slot < 0) return 0;
@@ -105,6 +126,10 @@ static void uart_isr_common(USART_TypeDef *uart, int slot) {
     }
 }
 
+void USART1_IRQHandler(void) {
+    uart_isr_common(USART1, 0);
+}
+
 void USART2_IRQHandler(void) {
-    uart_isr_common(USART2, 0);
+    uart_isr_common(USART2, 1);
 }

@@ -199,6 +199,7 @@ typedef struct {
 
 #define NVIC_EnableIRQ(irqn)   (NVIC->ISER[(irqn) >> 5] = (1UL << ((irqn) & 0x1F)))
 
+#define USART1_IRQn         37
 #define USART2_IRQn         38
 
 /* ── DWT (Data Watchpoint and Trace) ───────────────────────────────────────

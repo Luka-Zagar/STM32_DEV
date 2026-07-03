@@ -2,6 +2,7 @@
 #include "stm32g474xx.h"
 #include "uart.h"
 #include "scheduler.h"
+#include "gps_neo8m.h"
 
 #define CONSOLE_UART USART2
 #define CONSOLE_BAUD 115200
@@ -75,6 +76,20 @@ void Console_Task(void) {
                 if (status_task_id >= 0) SCH_Pause_Task(status_task_id);
                 uart_write_str(CONSOLE_UART, "\r\nEnter blink interval (ms): ");
                 break;
+            }
+            if (byte == 'G' || byte == 'g') {
+                const gps_fix_t *fix = gps_get_fix();
+                uart_write_str(CONSOLE_UART, "\r\nGPS: fix=");
+                uart_write_str(CONSOLE_UART, fix->fix_valid ? "yes" : "no");
+                uart_write_str(CONSOLE_UART, "  sats=");
+                uart_write_uint(CONSOLE_UART, fix->num_sats);
+                uart_write_str(CONSOLE_UART, "  lat_e7=");
+                uart_write_int(CONSOLE_UART, fix->lat_e7);
+                uart_write_str(CONSOLE_UART, "  lon_e7=");
+                uart_write_int(CONSOLE_UART, fix->lon_e7);
+                uart_write_str(CONSOLE_UART, "  utc=");
+                uart_write_uint(CONSOLE_UART, fix->utc_time);
+                uart_write_str(CONSOLE_UART, "\r\n");
             }
         }
         return;

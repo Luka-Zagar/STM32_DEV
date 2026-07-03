@@ -4,6 +4,7 @@
 #include "task_heartbeat.h"
 #include "task_console.h"
 #include "task_status.h"
+#include "task_gps.h"
 
 int main(void) {
     SysTick_Init();
@@ -14,6 +15,9 @@ int main(void) {
 
     Console_Task_Init(heartbeat_task_id);
     int console_task_id = SCH_Add_Task(Console_Task, 0, 10);
+
+    Task_GPS_Init();
+    SCH_Add_Task(Task_GPS, 0, 10);
 
     int status_task_id = SCH_Add_Task(Task_Status, 3000, 3000);
     Task_Status_Init(heartbeat_task_id, console_task_id);

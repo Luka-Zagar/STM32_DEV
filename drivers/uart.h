@@ -6,8 +6,8 @@
 
 /* Instance-parameterized UART driver: uart_init(USART2, 115200), never
  * console_init(). GPIO/RCC wiring per instance is added inside uart.c as
- * each peripheral gets physically wired (see docs/pinout.md); today only
- * USART2 (ST-LINK VCP) is supported.
+ * each peripheral gets physically wired (see docs/pinout.md); USART1
+ * (GPS, PC4/PC5) and USART2 (ST-LINK VCP) are wired today.
  *
  * RX is interrupt-driven into a per-instance ring buffer so callers never
  * block waiting on incoming bytes.
@@ -20,6 +20,7 @@ void uart_write_str(USART_TypeDef *uart, const char *s);
 
 /* Writes the decimal representation of v. No floats, no printf. */
 void uart_write_uint(USART_TypeDef *uart, uint32_t v);
+void uart_write_int(USART_TypeDef *uart, int32_t v);
 
 /* Non-blocking. Returns 1 and stores the byte in *out if one was available. */
 int uart_read_byte(USART_TypeDef *uart, uint8_t *out);
