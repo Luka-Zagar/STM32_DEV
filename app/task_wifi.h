@@ -22,4 +22,15 @@ const char *Task_WiFi_Status_Str(void);
 /* How many GPS fixes have been successfully published this boot. */
 uint32_t Task_WiFi_Publish_Count(void);
 
+/* Raw AT+GMR response captured once at boot (firmware/AT version info),
+ * to check e.g. whether this build actually supports the MQTT AT
+ * commands. Empty until that step has run. */
+const char *Task_WiFi_Firmware_Str(void);
+
+/* Hex dump of the most recent CONNACK received (whether accepted or
+ * rejected), for diagnosing exactly why a connection attempt failed
+ * (e.g. reading the actual MQTT reason code byte). Empty until a
+ * CONNACK has actually arrived. */
+const char *Task_WiFi_Connack_Hex(void);
+
 #endif /* TASK_WIFI_H */

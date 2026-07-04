@@ -248,11 +248,17 @@ static void print_wifi_data(void) {
     uart_write_str(CONSOLE_UART, "ESP8266: ");
     uart_write_str(CONSOLE_UART, Task_WiFi_Status_Str());
     uart_write_str(CONSOLE_UART, "\r\n");
+    uart_write_str(CONSOLE_UART, "Firmware (AT+GMR):\r\n");
+    uart_write_str(CONSOLE_UART, Task_WiFi_Firmware_Str());
+    uart_write_str(CONSOLE_UART, "\r\n");
     uart_write_str(CONSOLE_UART, "Published: ");
     uart_write_uint(CONSOLE_UART, Task_WiFi_Publish_Count());
     uart_write_str(CONSOLE_UART, " fixes\r\n");
-    uart_write_str(CONSOLE_UART, "Last line: ");
-    uart_write_str(CONSOLE_UART, esp8266_debug_last_line());
+    uart_write_str(CONSOLE_UART, "Last CONNACK: ");
+    uart_write_str(CONSOLE_UART, Task_WiFi_Connack_Hex());
+    uart_write_str(CONSOLE_UART, "\r\n");
+    uart_write_str(CONSOLE_UART, "Last response:\r\n");
+    uart_write_str(CONSOLE_UART, esp8266_debug_response());
     uart_write_str(CONSOLE_UART, "\r\n");
 }
 

@@ -56,6 +56,7 @@ set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/app/strbuf.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/gps_neo8m.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/esp8266.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/mqtt.c
 )
 
 # Include directories for all compilers
