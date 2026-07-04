@@ -247,6 +247,9 @@ static void print_wifi_data(void) {
     uart_write_str(CONSOLE_UART, "ESP8266: ");
     uart_write_str(CONSOLE_UART, Task_WiFi_Status_Str());
     uart_write_str(CONSOLE_UART, "\r\n");
+    uart_write_str(CONSOLE_UART, "Published: ");
+    uart_write_uint(CONSOLE_UART, Task_WiFi_Publish_Count());
+    uart_write_str(CONSOLE_UART, " fixes\r\n");
 }
 
 static void enter_wifi_menu(void) {

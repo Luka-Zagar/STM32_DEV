@@ -1,0 +1,16 @@
+#ifndef WIFI_CONFIG_H
+#define WIFI_CONFIG_H
+
+/* Copy this file to wifi_config.h (already in .gitignore - never commit
+ * the real one) and fill in your actual credentials. wifi_config.h is
+ * read locally at build time only; it never leaves this machine. */
+
+#define WIFI_SSID     "your-ssid"
+#define WIFI_PASSWORD "your-password"
+
+#define MQTT_HOST      "your.mqtt.broker.example"
+#define MQTT_PORT      1883
+#define MQTT_CLIENT_ID "ekosonda-01"
+#define MQTT_TOPIC     "ekosonda/gps"
+
+#endif /* WIFI_CONFIG_H */

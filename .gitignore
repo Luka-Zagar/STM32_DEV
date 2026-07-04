@@ -35,3 +35,6 @@ Thumbs.db
 # --- User Generated Files ---
 EkoSonda.md
 .cache/
+
+# --- Secrets: never commit WiFi/MQTT credentials ---
+app/wifi_config.h
