@@ -28,4 +28,7 @@ void esp8266_poll(USART_TypeDef *uart);
 
 esp_status_t esp8266_get_status(void);
 
+/* Temporary debug aid: the most recent non-empty response line seen. */
+const char *esp8266_debug_last_line(void);
+
 #endif /* ESP8266_H */

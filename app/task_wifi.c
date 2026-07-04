@@ -121,7 +121,11 @@ void Task_WiFi(void) {
             strbuf_init(&sb, cmd_buf, sizeof(cmd_buf));
             strbuf_str(&sb, "AT+MQTTUSERCFG=0,1,\"");
             strbuf_str_escaped(&sb, MQTT_CLIENT_ID);
-            strbuf_str(&sb, "\",\"\",\"\",0,0,\"\"");
+            strbuf_str(&sb, "\",\"");
+            strbuf_str_escaped(&sb, MQTT_USER);
+            strbuf_str(&sb, "\",\"");
+            strbuf_str_escaped(&sb, MQTT_PASS);
+            strbuf_str(&sb, "\",0,0,\"\"");
             esp8266_send(WIFI_UART, cmd_buf, SHORT_TIMEOUT_MS);
             state = WIFI_MQTTCFG_WAIT;
             break;

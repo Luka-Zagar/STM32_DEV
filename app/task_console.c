@@ -7,6 +7,7 @@
 #include "rtc.h"
 #include "task_gps.h"
 #include "task_wifi.h"
+#include "esp8266.h"
 
 #define CONSOLE_UART USART2
 #define CONSOLE_BAUD 115200
@@ -250,6 +251,9 @@ static void print_wifi_data(void) {
     uart_write_str(CONSOLE_UART, "Published: ");
     uart_write_uint(CONSOLE_UART, Task_WiFi_Publish_Count());
     uart_write_str(CONSOLE_UART, " fixes\r\n");
+    uart_write_str(CONSOLE_UART, "Last line: ");
+    uart_write_str(CONSOLE_UART, esp8266_debug_last_line());
+    uart_write_str(CONSOLE_UART, "\r\n");
 }
 
 static void enter_wifi_menu(void) {

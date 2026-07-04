@@ -3,12 +3,18 @@
 #include "systick.h"
 
 #define LINE_MAX_LEN 128
+#define LAST_LINE_CAP 80
 
 static char line_buf[LINE_MAX_LEN];
 static uint32_t line_len = 0;
 
 static esp_status_t status = ESP_STATUS_IDLE;
 static uint32_t deadline_ms = 0;
+
+/* Temporary debug aid: the most recent non-empty line seen, whatever it
+ * was - lets the console show the module's actual response text when a
+ * command unexpectedly errors/times out, instead of guessing blind. */
+static char last_line[LAST_LINE_CAP];
 
 static int line_is(const char *line, const char *match) {
     while (*line && *match && *line == *match) {
@@ -35,6 +41,13 @@ void esp8266_send(USART_TypeDef *uart, const char *cmd, uint32_t timeout_ms) {
 
 static void handle_line(const char *line) {
     if (line[0] == '\0') return; /* AT firmware pads responses with blank lines */
+
+    uint32_t i = 0;
+    while (line[i] && i < LAST_LINE_CAP - 1) {
+        last_line[i] = line[i];
+        i++;
+    }
+    last_line[i] = '\0';
 
     if (line_is(line, "OK")) {
         status = ESP_STATUS_OK;
@@ -70,4 +83,8 @@ void esp8266_poll(USART_TypeDef *uart) {
 
 esp_status_t esp8266_get_status(void) {
     return status;
+}
+
+const char *esp8266_debug_last_line(void) {
+    return last_line;
 }

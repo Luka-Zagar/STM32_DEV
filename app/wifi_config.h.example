@@ -13,4 +13,7 @@
 #define MQTT_CLIENT_ID "ekosonda-01"
 #define MQTT_TOPIC     "ekosonda/gps"
 
+#define MQTT_USER      "your-mqtt-username"
+#define MQTT_PASS      "your-mqtt-password"
+
 #endif /* WIFI_CONFIG_H */
