@@ -16,7 +16,7 @@
 #define TCP_CONNECT_TIMEOUT_MS 15000UL /* CIPSTART="SSL": TCP + TLS handshake round trip */
 #define SEND_CONFIRM_TIMEOUT_MS 5000UL /* "SEND OK"/"SEND FAIL" after raw bytes go out */
 #define CONNACK_TIMEOUT_MS 8000UL
-#define RETRY_DELAY_MS 3000UL
+#define RETRY_DELAY_MS 8000UL /* SSL teardown is slow; a short retry delay hits "busy p..." */
 #define PUBLISH_INTERVAL_MS 5000UL
 #define MQTT_KEEPALIVE_SEC 60U
 
@@ -44,7 +44,6 @@ typedef enum {
     WIFI_CIPCLOSE_WAIT,
     WIFI_CIPSTART_SEND,
     WIFI_CIPSTART_WAIT,
-    WIFI_CONNECT_CIPSEND_SEND,
     WIFI_CONNECT_CIPSEND_WAIT,
     WIFI_CONNACK_WAIT,
     WIFI_CONNECTED,
@@ -182,6 +181,7 @@ void Task_WiFi(void) {
             break;
 
         case WIFI_CWMODE_SEND:
+            if (!due(now)) break;
             esp8266_send(WIFI_UART, "AT+CWMODE=1", SHORT_TIMEOUT_MS);
             state = WIFI_CWMODE_WAIT;
             break;
@@ -193,6 +193,7 @@ void Task_WiFi(void) {
             break;
 
         case WIFI_CWJAP_SEND:
+            if (!due(now)) break;
             strbuf_init(&sb, cmd_buf, sizeof(cmd_buf));
             strbuf_str(&sb, "AT+CWJAP=\"");
             strbuf_str_escaped(&sb, WIFI_SSID);
@@ -226,7 +227,12 @@ void Task_WiFi(void) {
 
         case WIFI_CIPCLOSE_SEND:
             /* Always close first so a retry never fights a stale socket
-             * from a previous attempt; result is irrelevant. */
+             * from a previous attempt; result is irrelevant. due() gate
+             * matters here: this is where every retry_at() from the
+             * connect cycle lands, so without it RETRY_DELAY_MS (the
+             * backoff added to dodge "busy p...") is silently skipped
+             * and CIPCLOSE/CIPSTART get hammered back-to-back. */
+            if (!due(now)) break;
             esp8266_send(WIFI_UART, "AT+CIPCLOSE", SHORT_TIMEOUT_MS);
             state = WIFI_CIPCLOSE_WAIT;
             break;
@@ -239,10 +245,13 @@ void Task_WiFi(void) {
             break;
 
         case WIFI_CIPSTART_SEND:
-            /* "SSL" not "TCP": the broker replied to a plaintext attempt
-             * with a TLS Alert (fatal, protocol_version) - confirmed via
-             * the CONNACK hex dump (0x15 = TLS Alert record type) - so
-             * this broker requires MQTTS, not plain MQTT. */
+            /* "SSL": the broker's port needs real TLS (confirmed via a
+             * CONNACK hex dump that turned out to be a TLS Alert -
+             * 0x15, fatal, protocol_version) - the 2016 AT firmware
+             * this module shipped with couldn't negotiate it, but it's
+             * since been reflashed to a modern (2022-era, mbedTLS)
+             * build, so retrying real TLS here instead of the plain-
+             * listener workaround. */
             strbuf_init(&sb, cmd_buf, sizeof(cmd_buf));
             strbuf_str(&sb, "AT+CIPSTART=\"SSL\",\"");
             strbuf_str_escaped(&sb, MQTT_HOST);
@@ -255,18 +264,19 @@ void Task_WiFi(void) {
         case WIFI_CIPSTART_WAIT:
             st = esp8266_get_status();
             if (st == ESP_STATUS_OK) {
+                /* Some brokers enforce a tight "must speak immediately
+                 * after the TLS handshake" timeout - chain straight into
+                 * sending AT+CIPSEND in this same tick rather than
+                 * waiting for the next scheduler invocation (up to
+                 * 20ms), to not give it an excuse to close on us. */
                 mqtt_packet_len = mqtt_build_connect(mqtt_packet, sizeof(mqtt_packet),
                                                       MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS,
                                                       MQTT_KEEPALIVE_SEC);
-                state = WIFI_CONNECT_CIPSEND_SEND;
+                send_cipsend_for_packet();
+                state = WIFI_CONNECT_CIPSEND_WAIT;
             } else if (st == ESP_STATUS_ERROR || st == ESP_STATUS_TIMEOUT) {
                 retry_at(WIFI_CIPCLOSE_SEND, now);
             }
-            break;
-
-        case WIFI_CONNECT_CIPSEND_SEND:
-            send_cipsend_for_packet();
-            state = WIFI_CONNECT_CIPSEND_WAIT;
             break;
 
         case WIFI_CONNECT_CIPSEND_WAIT:
@@ -361,7 +371,6 @@ const char *Task_WiFi_Status_Str(void) {
         case WIFI_CIPSTART_SEND:
         case WIFI_CIPSTART_WAIT:
             return "connecting TCP to broker";
-        case WIFI_CONNECT_CIPSEND_SEND:
         case WIFI_CONNECT_CIPSEND_WAIT:
             return "sending MQTT CONNECT";
         case WIFI_CONNACK_WAIT:

@@ -47,16 +47,33 @@ set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/core/systick.c
 	${CMAKE_CURRENT_SOURCE_DIR}/drivers/uart.c
 	${CMAKE_CURRENT_SOURCE_DIR}/drivers/rtc.c
+	${CMAKE_CURRENT_SOURCE_DIR}/drivers/spi.c
+	${CMAKE_CURRENT_SOURCE_DIR}/drivers/i2c.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/scheduler.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_console.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_heartbeat.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_status.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_gps.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/task_wifi.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/task_sd.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/task_acquire.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/task_logger.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/task_led.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/task_battery.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/task_imu.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/record.c
+	${CMAKE_CURRENT_SOURCE_DIR}/app/ringbuf.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/strbuf.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/gps_neo8m.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/esp8266.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/mqtt.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/ina3221.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/mpu9250.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/sd_spi.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/diskio.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/fatfs/ff.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/fatfs/ffsystem_baremetal.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/fatfs/ffunicode.c
 )
 
 # Include directories for all compilers
@@ -65,6 +82,7 @@ set(include_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}/core
 	${CMAKE_CURRENT_SOURCE_DIR}/drivers
 	${CMAKE_CURRENT_SOURCE_DIR}/devices
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/fatfs
 	${CMAKE_CURRENT_SOURCE_DIR}/app
 )
 

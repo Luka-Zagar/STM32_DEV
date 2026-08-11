@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define SCH_MAX_TASKS 8
+#define SCH_MAX_TASKS 16 /* 11 currently registered (main.c) - headroom for whatever's still ahead (WiFi/MQTT work) */
 
 typedef void (*sch_task_fn_t)(void);
 
