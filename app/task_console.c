@@ -7,7 +7,6 @@
 #include "rtc.h"
 #include "task_gps.h"
 #include "task_wifi.h"
-#include "esp8266.h"
 #include "task_led.h"
 #include "task_battery.h"
 #include "task_sd.h"
@@ -257,8 +256,11 @@ static void enter_gps_menu(void) {
 }
 
 static void print_wifi_data(void) {
-    uart_write_str(CONSOLE_UART, "ESP8266: ");
+    uart_write_str(CONSOLE_UART, "ESP32: ");
     uart_write_str(CONSOLE_UART, Task_WiFi_Status_Str());
+    uart_write_str(CONSOLE_UART, "\r\n");
+    uart_write_str(CONSOLE_UART, "MQTT link: ");
+    uart_write_str(CONSOLE_UART, Task_WiFi_MQTT_Connected() ? "connected" : "not connected");
     uart_write_str(CONSOLE_UART, "\r\n");
     uart_write_str(CONSOLE_UART, "Firmware (AT+GMR):\r\n");
     uart_write_str(CONSOLE_UART, Task_WiFi_Firmware_Str());
@@ -266,12 +268,6 @@ static void print_wifi_data(void) {
     uart_write_str(CONSOLE_UART, "Published: ");
     uart_write_uint(CONSOLE_UART, Task_WiFi_Publish_Count());
     uart_write_str(CONSOLE_UART, " fixes\r\n");
-    uart_write_str(CONSOLE_UART, "Last CONNACK: ");
-    uart_write_str(CONSOLE_UART, Task_WiFi_Connack_Hex());
-    uart_write_str(CONSOLE_UART, "\r\n");
-    uart_write_str(CONSOLE_UART, "Last response:\r\n");
-    uart_write_str(CONSOLE_UART, esp8266_debug_response());
-    uart_write_str(CONSOLE_UART, "\r\n");
 }
 
 static void enter_wifi_menu(void) {

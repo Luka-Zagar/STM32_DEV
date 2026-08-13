@@ -5,13 +5,19 @@
  * the real one) and fill in your actual credentials. wifi_config.h is
  * read locally at build time only; it never leaves this machine. */
 
+/* Two fallback candidates - task_wifi.c cycles to the next one each time
+ * a join attempt fails/times out, and stays on whichever one last
+ * worked rather than always starting from #1. */
 #define WIFI_SSID     "your-ssid"
 #define WIFI_PASSWORD "your-password"
 
+#define WIFI_SSID_2     "your-second-ssid"
+#define WIFI_PASSWORD_2 "your-second-password"
+
 #define MQTT_HOST      "your.mqtt.broker.example"
-#define MQTT_PORT      1883
-#define MQTT_CLIENT_ID "ekosonda-01"
-#define MQTT_TOPIC     "ekosonda/gps"
+#define MQTT_PORT      8883
+#define MQTT_CLIENT_ID "ekosonda-01" /* must be unique per connected client - a duplicate ID gets the other one disconnected */
+#define MQTT_TOPIC     "/project/eko-sonda/ekosonda-01/sensors" /* per-device; subscriber side uses a wildcard, e.g. /project/eko-sonda/# */
 
 #define MQTT_USER      "your-mqtt-username"
 #define MQTT_PASS      "your-mqtt-password"

@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 /* Minimal bounded string builder - assembles AT commands and JSON
- * payloads before handing them to esp8266_send(). Mirrors
+ * payloads before handing them to esp32_send(). Mirrors
  * uart_write_uint/uart_write_fixed's digit conversion, just targeting
  * memory instead of a UART. Integer/fixed-point only, no floats. */
 typedef struct {

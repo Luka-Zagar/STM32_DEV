@@ -65,8 +65,7 @@ set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/app/ringbuf.c
 	${CMAKE_CURRENT_SOURCE_DIR}/app/strbuf.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/gps_neo8m.c
-	${CMAKE_CURRENT_SOURCE_DIR}/devices/esp8266.c
-	${CMAKE_CURRENT_SOURCE_DIR}/devices/mqtt.c
+	${CMAKE_CURRENT_SOURCE_DIR}/devices/esp32.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/ina3221.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/mpu9250.c
 	${CMAKE_CURRENT_SOURCE_DIR}/devices/sd_spi.c

@@ -14,6 +14,14 @@
 
 static ringbuf_t rb;
 
+/* Separate from the ring buffer on purpose - the ring buffer is
+ * task_logger's single-consumer queue (popping from it here too would
+ * race the logger for the same entries); this is just "whatever the
+ * latest tick built", for consumers that want the current snapshot
+ * rather than the drained log stream (currently: task_wifi.c's MQTT
+ * publish, via Task_Acquire_Last_Record()). */
+static record_t last_record;
+
 /* Howard Hinnant's days-from-civil algorithm - integer-only (no floats,
  * per project rule), proleptic Gregorian, correct for any year rtc.c can
  * represent. rtc.c deliberately stays in broken-down calendar fields
@@ -91,9 +99,14 @@ void Task_Acquire(void) {
     /* temp/hum/press/lux stay unset (no record_t field at all right now) -
      * BME280/ADC explicitly out of scope for this prototype, see record.h. */
 
+    last_record = rec;
     ringbuf_push(&rb, &rec);
 }
 
 ringbuf_t *Task_Acquire_GetRingbuf(void) {
     return &rb;
+}
+
+const record_t *Task_Acquire_Last_Record(void) {
+    return &last_record;
 }

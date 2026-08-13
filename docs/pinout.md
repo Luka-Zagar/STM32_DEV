@@ -9,8 +9,8 @@ Written before wiring anything; check against the Nucleo-G474RE user manual
 | PA3 | AF7 | USART2_RX | Routed to ST-LINK VCP (no external wiring needed). Debug console, 115200 8N1. |
 | PC4 | AF7 | USART1_TX | To GPS module (NEO-8M) RX. 9600 8N1. |
 | PC5 | AF7 | USART1_RX | To GPS module (NEO-8M) TX. 9600 8N1. |
-| PB10 | AF7 | USART3_TX | To ESP8266 (ESP-01S) RX. 115200 8N1 (AT firmware default; adjust if the module reports a different baud). Give the ESP-01S its own decoupling (bulk electrolytic + ceramic) - it spikes 300-400mA on TX bursts and browns out weak rails. |
-| PB11 | AF7 | USART3_RX | To ESP8266 (ESP-01S) TX. 115200 8N1. |
+| PB10 | AF7 | USART3_TX | To WiFi module RX. 115200 8N1. **ESP32-WROOM-32** (swapped in from an ESP8266/ESP-01S - see WiFi/MQTT note below): the AT command UART on esp-at's default WROOM-32 build is UART1, not the USB/UART0 port, at GPIO16/GPIO17 - so this goes to the module's **GPIO16 (U1RXD)**. |
+| PB11 | AF7 | USART3_RX | To WiFi module TX - module's **GPIO17 (U1TXD)**. 115200 8N1. Module needs EN held high (boots straight into AT mode) and its own 3.3V regulator rated for WiFi TX peaks (300-500mA) - an AMS1117 alone is marginal; add bulk electrolytic + ceramic decoupling close to the module. 3.3V logic only, ESP32 GPIO is not 5V tolerant. |
 | PB12 | -  | SD_CS | GPIO output, software-driven SPI2 chip select for the Micro SD shield. Shield labels this pin "D8/SS" on its own silkscreen (Arduino-shield heritage) - ignore that label, it's jumper-wired here, not header-stacked. |
 | PB13 | AF5 | SPI2_SCK | To Micro SD shield CLK (its "D5"). Running at DIV64 (~2.66MHz, fPCLK/64) for data transfers, not the originally planned DIV8 (~21.25MHz) - see Bring-up notes below. |
 | PB14 | AF5 | SPI2_MISO | To Micro SD shield MISO (its "D6"). |
@@ -138,6 +138,44 @@ Notes on the implementation, not just the spec:
   the SPI/FAT-corruption note below for what that looks like in practice).
   Pressing it again after reinserting a card re-runs the mount + self-test
   ritual and starts a fresh session file.
+
+## WiFi/MQTT: ESP8266 → ESP32-WROOM-32
+
+The WiFi module was swapped from an ESP8266 (ESP-01S) to an ESP32-WROOM-32,
+both running Espressif's esp-at firmware. Wiring-wise it's a drop-in swap
+(same USART3 pins, same 115200 8N1 - only the far end's pin labels differ,
+see the pin table above); the real difference is firmware architecture:
+
+- The ESP8266's AT firmware was the 2016-era build that predates esp-at's
+  native `AT+MQTTxxx` command set, so `devices/mqtt.c` hand-rolled MQTT 3.1.1
+  packet encoding client-side and pushed the raw bytes over `AT+CIPSTART`/
+  `AT+CIPSEND` (plain TCP AT commands). Even after reflashing that module to
+  a modern (2022-era) esp-at build with real TLS support, `AT+CIPSTART="SSL"`
+  would connect then immediately show `CLOSED` right before its own `OK` -
+  a handshake-level incompatibility with the broker's modern nginx/OpenSSL
+  front end (suspected root cause: the old bundled mbedTLS v2.16.5; a newer
+  official ESP8266 esp-at release upgrades to mbedTLS ~3.6.3, which likely
+  would have fixed it too, but wasn't tried before the module swap).
+- The ESP32-WROOM-32 has enough flash/RAM for esp-at's native MQTT AT
+  command set (`AT+MQTTUSERCFG`/`AT+MQTTCONN`/`AT+MQTTPUBRAW`/etc, see
+  `devices/esp32.c`) - the module handles the whole MQTT protocol (framing,
+  keepalive, QoS0) and the TLS session internally; the STM32 side just feeds
+  it connection details and raw JSON payload bytes. `devices/mqtt.c` (the
+  hand-rolled packet builder) and `devices/esp8266.c` are retired.
+- `AT+MQTTUSERCFG`'s TLS scheme is set to `2` (encrypted, server certificate
+  **not** verified) rather than `3` (verify). Deliberate for now: the data
+  itself is confidential/integrity-protected by TLS either way, and
+  server-identity pinning was judged low-risk given a broker under our own
+  control behind an IP-scoped setup - not a security oversight, a
+  consciously deferred hardening step.
+- `AT+MQTTCONN`'s trailing reconnect flag is `1` (module auto-retries a
+  dropped TCP link), but per Espressif's own AT command docs `AT+MQTTCONN`
+  cannot re-establish a link that's already been marked disconnected/
+  cleaned - `AT+MQTTCLEAN=0` has to run first. `task_wifi.c`'s state machine
+  watches `esp32_mqtt_is_connected()` every tick (it updates asynchronously
+  off `+MQTTCONNECTED`/`+MQTTDISCONNECTED` lines, not just as a direct reply
+  to a command) and routes through `MQTTCLEAN` before ever re-sending
+  `MQTTCONN`.
 
 ## Bring-up notes
 

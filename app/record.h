@@ -58,4 +58,14 @@ void record_csv_header(strbuf_t *sb);
 /* Appends one CSV row (no trailing newline) for rec into sb. */
 void record_to_csv_row(strbuf_t *sb, const record_t *rec);
 
+/* Appends one JSON object (no trailing newline) for rec into sb - same
+ * fields as record_to_csv_row(), same single source of truth, just for
+ * MQTT publishing (app/task_wifi.c) instead of the SD log. Field names
+ * match what the dashboard already expects for fix/sats/lat/lon/alt_m/
+ * speed_kmh (established before this function existed); the rest follow
+ * the same short/lowercase convention. Worst-case length is 416 bytes
+ * (computed by hand, see task_wifi.c's PUBLISH_PAYLOAD_CAP comment) -
+ * same "measure it, don't guess" rule as the CSV buffer sizes below. */
+void record_to_json(strbuf_t *sb, const record_t *rec);
+
 #endif /* RECORD_H */
