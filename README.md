@@ -6,14 +6,7 @@ vibration, and GNSS data, timestamped and geotagged, to an SD card.
 Opportunistically uploads at the depot over WiFi (store-and-forward, not
 real-time). Target: city-wide ecological mapping for Slovenia.
 
-Register-level CMSIS on an STM32 Nucleo-G474RE, no HAL. See `CLAUDE.md` for
-the full project brief, architecture, and build order.
-
-## Current status
-
-Spine step 1 only: boot, clock (170 MHz PLL), SysTick @ 1kHz, LED heartbeat.
-Everything else (console, scheduler, sensors, SD, WiFi) is being rebuilt on
-top of this per the build order in `CLAUDE.md`.
+Register-level CMSIS on an STM32 Nucleo-G474RE, no HAL.
 
 ## Layout
 
