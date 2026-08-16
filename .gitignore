@@ -34,3 +34,10 @@ Thumbs.db
 
 # --- User Generated Files ---
 EkoSonda.md
+.cache/
+
+# --- Internal report draft: not meant for the public repo ---
+docs/porocilo_projekta.md
+
+# --- Secrets: never commit WiFi/MQTT credentials ---
+app/wifi_config.h

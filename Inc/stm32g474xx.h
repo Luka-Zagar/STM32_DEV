@@ -16,6 +16,37 @@
    flow (i.e., by the hardware itself). */
 #define __IO    volatile
 
+/* ARM Core Definitions */
+#define __FPU_PRESENT       1U
+#define __FPU_USED          1U
+
+typedef struct {
+    __IO uint32_t CPUID;
+    __IO uint32_t ICSR;
+    __IO uint32_t VTOR;
+    __IO uint32_t AIRCR;
+    __IO uint32_t SCR;
+    __IO uint32_t CCR;
+    __IO uint32_t SHP[3];
+    __IO uint32_t SHCSR;
+    __IO uint32_t CFSR;
+    __IO uint32_t HFSR;
+    __IO uint32_t DFSR;
+    __IO uint32_t MMFAR;
+    __IO uint32_t BFAR;
+    __IO uint32_t AFSR;
+    __IO uint32_t PFR[2];
+    __IO uint32_t DFR;
+    __IO uint32_t ADR;
+    __IO uint32_t MMFR[4];
+    __IO uint32_t ISAR[5];
+    __IO uint32_t Reserved0[5];
+    __IO uint32_t CPACR;         /* 0xD88: Coprocessor Access Control Register (FPU) */
+} SCB_TypeDef;
+
+#define SCB_BASE            (0xE000ED00UL)
+#define SCB                 ((SCB_TypeDef *) SCB_BASE)
+
 /* ── RCC (Reset and Clock Control) ────────────────────────────────────────── 
    Base Address: 0x40021000
    This peripheral controls which parts of the chip are "awake" and how fast 
@@ -34,6 +65,23 @@ typedef struct {
     __IO uint32_t AHB1ENR;       /* 0x48: AHB1 Peripheral Clock Enable */
     __IO uint32_t AHB2ENR;       /* 0x4C: AHB2 Peripheral Clock Enable (GPIOs live here) */
     __IO uint32_t AHB3ENR;       /* 0x50: AHB3 Peripheral Clock Enable */
+    __IO uint32_t Reserved2;     /* 0x54: Reserved */
+    __IO uint32_t APB1ENR1;      /* 0x58: APB1 Peripheral Clock Enable 1 */
+    __IO uint32_t APB1ENR2;      /* 0x5C: APB1 Peripheral Clock Enable 2 */
+    __IO uint32_t APB2ENR;       /* 0x60: APB2 Peripheral Clock Enable */
+    __IO uint32_t Reserved3;     /* 0x64: Reserved */
+    __IO uint32_t AHB1RSTR;      /* 0x68: AHB1 Peripheral Reset Register */
+    __IO uint32_t AHB2RSTR;      /* 0x6C: AHB2 Peripheral Reset Register */
+    __IO uint32_t AHB3RSTR;      /* 0x70: AHB3 Peripheral Reset Register */
+    __IO uint32_t Reserved4;     /* 0x74: Reserved */
+    __IO uint32_t APB1RSTR1;     /* 0x78: APB1 Peripheral Reset Register 1 */
+    __IO uint32_t APB1RSTR2;     /* 0x7C: APB1 Peripheral Reset Register 2 */
+    __IO uint32_t APB2RSTR;      /* 0x80: APB2 Peripheral Reset Register */
+    __IO uint32_t Reserved5;     /* 0x84: Reserved */
+    __IO uint32_t CCIPR;         /* 0x88: Peripheral Independent Clock Config Register */
+    __IO uint32_t Reserved6;     /* 0x8C: Reserved */
+    __IO uint32_t BDCR;          /* 0x90: Backup Domain Control Register (LSE, RTC clock select) */
+    __IO uint32_t CSR;           /* 0x94: Control/Status Register (LSI, reset flags) */
 } RCC_TypeDef;
 
 #define RCC_BASE            (0x40021000UL)
@@ -42,6 +90,19 @@ typedef struct {
 /* RCC Bit Definitions */
 #define RCC_CR_HSION        (1UL << 8)   /* Internal High Speed clock enable */
 #define RCC_CR_HSIRDY       (1UL << 10)  /* Internal High Speed clock ready flag */
+
+#define RCC_BDCR_LSEON       (1UL << 0)  /* External Low Speed (32.768kHz crystal) oscillator enable */
+#define RCC_BDCR_LSERDY      (1UL << 1)  /* LSE ready flag */
+#define RCC_BDCR_RTCSEL_Msk  (3UL << 8)  /* RTC clock source select mask */
+#define RCC_BDCR_RTCSEL_LSE  (1UL << 8)  /* Select LSE as RTC clock */
+#define RCC_BDCR_RTCSEL_LSI  (2UL << 8)  /* Select LSI as RTC clock */
+#define RCC_BDCR_RTCEN       (1UL << 15) /* RTC clock enable */
+#define RCC_BDCR_BDRST       (1UL << 16) /* Backup domain software reset */
+
+#define RCC_CSR_LSION        (1UL << 0)  /* Internal Low Speed (~32kHz RC) oscillator enable */
+#define RCC_CSR_LSIRDY       (1UL << 1)  /* LSI ready flag */
+
+#define RCC_APB1ENR1_PWREN   (1UL << 28) /* Enable Clock for PWR (needed to unlock backup domain) */
 #define RCC_CR_PLLON        (1UL << 24)  /* Main PLL enable */
 #define RCC_CR_PLLRDY       (1UL << 25)  /* Main PLL ready flag */
 
@@ -56,6 +117,12 @@ typedef struct {
 
 #define RCC_AHB2ENR_GPIOAEN    (1UL << 0) /* Enable Clock for Port A */
 #define RCC_AHB2ENR_GPIOBEN    (1UL << 1) /* Enable Clock for Port B */
+#define RCC_AHB2ENR_GPIOCEN    (1UL << 2) /* Enable Clock for Port C */
+#define RCC_APB1ENR1_SPI2EN    (1UL << 14) /* Enable Clock for SPI2 */
+#define RCC_APB1ENR1_I2C1EN    (1UL << 21) /* Enable Clock for I2C1 */
+#define RCC_APB1ENR1_USART2EN  (1UL << 17) /* Enable Clock for USART2 */
+#define RCC_APB1ENR1_USART3EN  (1UL << 18) /* Enable Clock for USART3 */
+#define RCC_APB2ENR_USART1EN   (1UL << 14) /* Enable Clock for USART1 */
 
 /* ── FLASH ──────────────────────────────────────────────────────────────── 
    Flash memory is slower than the CPU. We need "Wait States" (Latency) 
@@ -72,6 +139,42 @@ typedef struct {
 #define FLASH_ACR_PRFTEN       (1UL << 8) /* Prefetch Enable (Performance) */
 #define FLASH_ACR_ICEN         (1UL << 9) /* Instruction Cache Enable */
 #define FLASH_ACR_DCEN         (1UL << 10)/* Data Cache Enable */
+
+/* ── PWR (Power Control) ────────────────────────────────────────────────────
+   Only needed here to unlock write access to the backup domain (LSE/BDCR/
+   RTC registers), which is protected by default to avoid accidental writes
+   to the battery-backed area.
+*/
+typedef struct {
+    __IO uint32_t CR1;           /* 0x00: Power Control Register 1 */
+} PWR_TypeDef;
+
+#define PWR_BASE            (0x40007000UL)
+#define PWR                 ((PWR_TypeDef *) PWR_BASE)
+
+#define PWR_CR1_DBP            (1UL << 8) /* Disable Backup domain write Protection */
+
+/* ── RTC (Real-Time Clock) ──────────────────────────────────────────────────
+   BCD calendar clocked from LSE (or LSI as a fallback), independent of the
+   core clock so it keeps time across a reset (with a backup battery on
+   VBAT - without one it resets along with everything else on this devboard).
+*/
+typedef struct {
+    __IO uint32_t TR;            /* 0x00: Time register (BCD HH:MM:SS) */
+    __IO uint32_t DR;            /* 0x04: Date register (BCD YY-MM-DD + weekday) */
+    __IO uint32_t CR;            /* 0x08: Control register */
+    __IO uint32_t ISR;           /* 0x0C: Initialization and status register */
+    __IO uint32_t PRER;          /* 0x10: Prescaler register */
+    __IO uint32_t Reserved0[4];  /* 0x14-0x20: WUTR, ALRMAR, ALRMBR, SSR - unused */
+    __IO uint32_t WPR;           /* 0x24: Write protection register */
+} RTC_TypeDef;
+
+#define RTC_BASE            (0x40002800UL)
+#define RTC                 ((RTC_TypeDef *) RTC_BASE)
+
+#define RTC_ISR_RSF            (1UL << 5)  /* Registers Synchronized Flag */
+#define RTC_ISR_INITF          (1UL << 6)  /* Init mode entered flag */
+#define RTC_ISR_INIT           (1UL << 7)  /* Enter Initialization mode */
 
 /* ── GPIO (General Purpose I/O) ───────────────────────────────────────────── 
    Each port (A, B, C...) has its own set of these registers.
@@ -93,11 +196,172 @@ typedef struct {
 #define GPIOA               ((GPIO_TypeDef *) GPIOA_BASE)
 #define GPIOB_BASE          (0x48000400UL)
 #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
+#define GPIOC_BASE          (0x48000800UL)
+#define GPIOC               ((GPIO_TypeDef *) GPIOC_BASE)
 
 #define GPIO_ODR_0             (1UL << 0) /* Bit mask for Pin 0 */
 #define GPIO_ODR_5             (1UL << 5) /* Bit mask for Pin 5 */
+#define GPIO_ODR_6             (1UL << 6) /* Bit mask for Pin 6 */
+#define GPIO_ODR_7             (1UL << 7) /* Bit mask for Pin 7 */
+#define GPIO_ODR_8             (1UL << 8) /* Bit mask for Pin 8 */
+#define GPIO_ODR_9             (1UL << 9) /* Bit mask for Pin 9 */
 
-/* ── SysTick ────────────────────────────────────────────────────────────── 
+/* ── USART (Universal Synchronous Asynchronous Receiver Transmitter) ──────── 
+   Base Address (USART1): 0x40013800
+*/
+typedef struct {
+    __IO uint32_t CR1;           /* 0x00: Control Register 1 */
+    __IO uint32_t CR2;           /* 0x04: Control Register 2 */
+    __IO uint32_t CR3;           /* 0x08: Control Register 3 */
+    __IO uint32_t BRR;           /* 0x0C: Baud Rate Register */
+    __IO uint32_t GTPR;          /* 0x10: Guard Time and Prescaler */
+    __IO uint32_t RTOR;          /* 0x14: Receiver Timeout */
+    __IO uint32_t RQR;           /* 0x18: Request Register */
+    __IO uint32_t ISR;           /* 0x1C: Interrupt and Status Register */
+    __IO uint32_t ICR;           /* 0x20: Interrupt Flag Clear Register */
+    __IO uint32_t RDR;           /* 0x24: Receive Data Register */
+    __IO uint32_t TDR;           /* 0x28: Transmit Data Register */
+    __IO uint32_t PRESC;         /* 0x2C: Prescaler Register */
+} USART_TypeDef;
+
+#define USART1_BASE         (0x40013800UL)
+#define USART1              ((USART_TypeDef *) USART1_BASE)
+#define USART2_BASE         (0x40004400UL)
+#define USART2              ((USART_TypeDef *) USART2_BASE)
+#define USART3_BASE         (0x40004800UL)
+#define USART3              ((USART_TypeDef *) USART3_BASE)
+
+/* USART Bit Definitions */
+#define USART_CR1_UE           (1UL << 0)  /* USART Enable */
+#define USART_CR1_RE           (1UL << 2)  /* Receiver Enable */
+#define USART_CR1_TE           (1UL << 3)  /* Transmitter Enable */
+#define USART_CR1_RXNEIE       (1UL << 5)  /* RXNE Interrupt Enable */
+
+#define USART_ISR_PE           (1UL << 0)  /* Parity Error */
+#define USART_ISR_FE           (1UL << 1)  /* Framing Error */
+#define USART_ISR_NE           (1UL << 2)  /* Noise Error */
+#define USART_ISR_ORE          (1UL << 3)  /* Overrun Error */
+#define USART_ISR_RXNE         (1UL << 5)  /* Read Data Register Not Empty */
+#define USART_ISR_TC           (1UL << 6)  /* Transmission Complete */
+#define USART_ISR_TXE          (1UL << 7)  /* Transmit Data Register Empty */
+
+#define USART_ICR_ORECF        (1UL << 3)  /* Overrun Error Clear Flag */
+
+/* ── SPI (Serial Peripheral Interface) ─────────────────────────────────────
+   Base Address (SPI2): 0x40003800. Used here for the Micro SD card - chip
+   select is a plain GPIO (drivers/spi does not touch NSS/CS; the device
+   layer drives it), so SSM/SSI (software slave-select) is used instead of
+   hardware NSS.
+*/
+typedef struct {
+    __IO uint32_t CR1;           /* 0x00: Control Register 1 */
+    __IO uint32_t CR2;           /* 0x04: Control Register 2 */
+    __IO uint32_t SR;            /* 0x08: Status Register */
+    __IO uint32_t DR;            /* 0x0C: Data Register */
+    __IO uint32_t CRCPR;         /* 0x10: CRC Polynomial Register */
+    __IO uint32_t RXCRCR;        /* 0x14: RX CRC Register */
+    __IO uint32_t TXCRCR;        /* 0x18: TX CRC Register */
+    __IO uint32_t I2SCFGR;       /* 0x1C: I2S Configuration Register (unused) */
+    __IO uint32_t I2SPR;         /* 0x20: I2S Prescaler Register (unused) */
+} SPI_TypeDef;
+
+#define SPI2_BASE           (0x40003800UL)
+#define SPI2                ((SPI_TypeDef *) SPI2_BASE)
+
+/* SPI Bit Definitions */
+#define SPI_CR1_CPHA           (1UL << 0)  /* Clock Phase */
+#define SPI_CR1_CPOL           (1UL << 1)  /* Clock Polarity */
+#define SPI_CR1_MSTR           (1UL << 2)  /* Master Selection */
+#define SPI_CR1_BR_Pos         (3U)        /* Baud Rate control position (fPCLK/2^(BR+1)) */
+#define SPI_CR1_SPE            (1UL << 6)  /* SPI Enable */
+#define SPI_CR1_SSI            (1UL << 8)  /* Internal Slave Select (software NSS value) */
+#define SPI_CR1_SSM            (1UL << 9)  /* Software Slave Management */
+
+#define SPI_CR2_FRXTH          (1UL << 12) /* FIFO Reception Threshold: 1 = event on 8-bit */
+#define SPI_CR2_DS_8BIT        (7UL << 8)  /* Data Size = 8 bits (DS[3:0] = 0111) */
+
+#define SPI_SR_RXNE            (1UL << 0)  /* Receive buffer Not Empty */
+#define SPI_SR_TXE             (1UL << 1)  /* Transmit buffer Empty */
+#define SPI_SR_BSY             (1UL << 7)  /* Busy flag */
+
+/* ── I2C (Inter-Integrated Circuit) ────────────────────────────────────────
+   Base Address (I2C1): 0x40005400. One bus, shared by every I2C sensor
+   (see project brief's I2C bus map) - devices/ina3221.c and friends take
+   this as a bus handle, never touch registers directly.
+*/
+typedef struct {
+    __IO uint32_t CR1;           /* 0x00: Control Register 1 */
+    __IO uint32_t CR2;           /* 0x04: Control Register 2 */
+    __IO uint32_t OAR1;          /* 0x08: Own Address 1 (unused - we're always master) */
+    __IO uint32_t OAR2;          /* 0x0C: Own Address 2 (unused) */
+    __IO uint32_t TIMINGR;       /* 0x10: Timing Register */
+    __IO uint32_t TIMEOUTR;      /* 0x14: Timeout Register (unused) */
+    __IO uint32_t ISR;           /* 0x18: Interrupt and Status Register */
+    __IO uint32_t ICR;           /* 0x1C: Interrupt Clear Register */
+    __IO uint32_t PECR;          /* 0x20: PEC Register (unused) */
+    __IO uint32_t RXDR;          /* 0x24: Receive Data Register */
+    __IO uint32_t TXDR;          /* 0x28: Transmit Data Register */
+} I2C_TypeDef;
+
+#define I2C1_BASE           (0x40005400UL)
+#define I2C1                ((I2C_TypeDef *) I2C1_BASE)
+
+/* I2C Bit Definitions */
+#define I2C_CR1_PE             (1UL << 0)  /* Peripheral Enable */
+
+#define I2C_CR2_SADD_Pos       (0U)        /* 7-bit address goes in bits 7:1 of SADD */
+#define I2C_CR2_RD_WRN         (1UL << 10) /* 0 = write (master to slave), 1 = read */
+#define I2C_CR2_START          (1UL << 13) /* Start generation */
+#define I2C_CR2_STOP           (1UL << 14) /* Stop generation */
+#define I2C_CR2_NBYTES_Pos     (16U)
+#define I2C_CR2_AUTOEND        (1UL << 25) /* Automatic STOP after NBYTES */
+
+#define I2C_ISR_TXIS           (1UL << 1)  /* TXDR empty, ready for next byte to send */
+#define I2C_ISR_RXNE           (1UL << 2)  /* RXDR has a received byte */
+#define I2C_ISR_NACKF          (1UL << 4)  /* NACK received */
+#define I2C_ISR_STOPF          (1UL << 5)  /* STOP condition detected */
+#define I2C_ISR_TC             (1UL << 6)  /* Transfer Complete (NBYTES done, AUTOEND=0 - ready for a repeated START) */
+#define I2C_ISR_BUSY           (1UL << 15) /* Bus busy */
+
+#define I2C_ICR_NACKCF          (1UL << 4)  /* Clears NACKF */
+#define I2C_ICR_STOPCF          (1UL << 5)  /* Clears STOPF */
+
+/* ── NVIC (Nested Vectored Interrupt Controller) ───────────────────────────
+   Core peripheral that enables/masks individual IRQ lines. ISER[n] holds
+   IRQs 32*n .. 32*n+31; write a 1 bit to enable that IRQ.
+*/
+typedef struct {
+    __IO uint32_t ISER[8];       /* 0x00: Interrupt Set-Enable Registers */
+} NVIC_TypeDef;
+
+#define NVIC_BASE           (0xE000E100UL)
+#define NVIC                ((NVIC_TypeDef *) NVIC_BASE)
+
+#define NVIC_EnableIRQ(irqn)   (NVIC->ISER[(irqn) >> 5] = (1UL << ((irqn) & 0x1F)))
+
+#define USART1_IRQn         37
+#define USART2_IRQn         38
+#define USART3_IRQn         39
+
+/* ── DWT (Data Watchpoint and Trace) ───────────────────────────────────────
+   Core debug peripheral with a free-running cycle counter, used to time
+   how long scheduler tasks actually take. Must enable tracing via DEMCR
+   (a single core register, not part of the DWT block) before CYCCNT counts.
+*/
+#define DEMCR               (*(volatile uint32_t *) 0xE000EDFCUL)
+#define DEMCR_TRCENA        (1UL << 24)
+
+typedef struct {
+    __IO uint32_t CTRL;          /* 0x00: Control */
+    __IO uint32_t CYCCNT;        /* 0x04: Free-running cycle counter */
+} DWT_TypeDef;
+
+#define DWT_BASE            (0xE0001000UL)
+#define DWT                 ((DWT_TypeDef *) DWT_BASE)
+
+#define DWT_CTRL_CYCCNTENA  (1UL << 0)
+
+/* ── SysTick ──────────────────────────────────────────────────────────────
    A simple 24-bit down-counter inside the ARM Cortex-M core used for 
    generating periodic interrupts (our OS Tick).
 */
