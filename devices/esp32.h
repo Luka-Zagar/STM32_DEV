@@ -58,6 +58,16 @@ void esp32_wait_again(uint32_t timeout_ms);
  * tick while idle/publishing to notice a drop and reconnect. */
 int esp32_mqtt_is_connected(void);
 
+/* WiFi station link state - updated the instant a "WIFI DISCONNECT" or
+ * "WIFI GOT IP" line is seen, same "asynchronous, not just a direct
+ * reply" reasoning as esp32_mqtt_is_connected(). Going out of an AP's
+ * range and back is exactly this: unsolicited, can happen at any time,
+ * and (unlike a dropped MQTT link) leaves nothing for AT+MQTTCONN to
+ * reconnect to until WiFi itself rejoins - task_wifi.c polls this to
+ * notice and drive a fresh AT+CWJAP rather than retrying MQTT forever
+ * against a dead network. */
+int esp32_wifi_is_joined(void);
+
 /* AT+MQTTPUBRAW's payload-ready signal is a single '>' byte, not a
  * newline-terminated line - needs byte-level waiting instead of the
  * line parser above. Call esp32_prompt_poll() INSTEAD OF esp32_poll()

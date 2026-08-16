@@ -44,6 +44,8 @@ typedef enum {
     WIFI_GMR_WAIT,
     WIFI_CWMODE_SEND,
     WIFI_CWMODE_WAIT,
+    WIFI_CWRECONNCFG_SEND,
+    WIFI_CWRECONNCFG_WAIT,
     WIFI_CWJAP_SEND,
     WIFI_CWJAP_WAIT,
     WIFI_MQTTUSERCFG_SEND,
@@ -94,6 +96,25 @@ static void retry_at(wifi_state_t send_state, uint32_t now) {
     state = send_state;
 }
 
+/* True once WiFi has been joined at least once this boot - i.e. we're
+ * somewhere past the initial AT+CWJAP success. Used to gate the "did
+ * WiFi drop out from under us" check below: no point checking before
+ * the first join has even happened (WIFI_CWJAP_WAIT's own retry loop
+ * already handles that case), and re-deriving this from state's enum
+ * order would be fragile against future reordering - explicit is safer. */
+static int state_is_past_initial_join(wifi_state_t s) {
+    switch (s) {
+        case WIFI_BRINGUP_SEND: case WIFI_BRINGUP_WAIT:
+        case WIFI_GMR_SEND: case WIFI_GMR_WAIT:
+        case WIFI_CWMODE_SEND: case WIFI_CWMODE_WAIT:
+        case WIFI_CWRECONNCFG_SEND: case WIFI_CWRECONNCFG_WAIT:
+        case WIFI_CWJAP_SEND: case WIFI_CWJAP_WAIT:
+            return 0;
+        default:
+            return 1;
+    }
+}
+
 static void copy_str(char *dst, const char *src, uint32_t cap) {
     uint32_t i = 0;
     while (src[i] && i < cap - 1) {
@@ -124,6 +145,23 @@ void Task_WiFi(void) {
     }
 
     esp32_poll(WIFI_UART);
+
+    /* WiFi itself can drop at any time (out of hotspot range, most
+     * relevant on a moving bus) - independent of, and more fundamental
+     * than, the MQTT-link check below. The module's own auto-reconnect
+     * is deliberately disabled (WIFI_CWRECONNCFG_SEND above), so nothing
+     * else will ever rejoin - without this check, WIFI_CONNECTED/
+     * publish states would just keep retrying AT+MQTTCONN forever
+     * against a network that no longer exists, silently, exactly the
+     * "stops broadcasting and never comes back" symptom this fixes.
+     * Checked before the MQTT check on purpose: if WiFi's gone, the MQTT
+     * link is necessarily gone too, and a full rejoin (which re-does
+     * MQTTCONN as its last step anyway) is the right response, not a
+     * MQTTCLEAN/MQTTCONN cycle against a dead radio link. */
+    if (state_is_past_initial_join(state) && !esp32_wifi_is_joined()) {
+        retry_at(WIFI_CWJAP_SEND, now);
+        return;
+    }
 
     /* The broker can drop the link at any time (restart, network blip),
      * not just as a direct reply to something we just sent - catch that
@@ -177,8 +215,28 @@ void Task_WiFi(void) {
 
         case WIFI_CWMODE_WAIT:
             st = esp32_get_status();
-            if (st == ESP_STATUS_OK) state = WIFI_CWJAP_SEND;
+            if (st == ESP_STATUS_OK) state = WIFI_CWRECONNCFG_SEND;
             else if (st == ESP_STATUS_ERROR || st == ESP_STATUS_TIMEOUT) retry_at(WIFI_CWMODE_SEND, now);
+            break;
+
+        case WIFI_CWRECONNCFG_SEND:
+            /* Disable the module's own auto-reconnect (interval=0) -
+             * task_wifi.c drives every reconnect explicitly and
+             * deterministically instead (see the WIFI DISCONNECT check
+             * at the top of Task_WiFi()), same reasoning as not trusting
+             * AT+MQTTCONN's reconnect flag alone for the MQTT link.
+             * Two independent reconnect mechanisms racing each other
+             * would be harder to reason about than just owning it here.
+             * One-time; proceed regardless of the result. */
+            esp32_send(WIFI_UART, "AT+CWRECONNCFG=0,0", SHORT_TIMEOUT_MS);
+            state = WIFI_CWRECONNCFG_WAIT;
+            break;
+
+        case WIFI_CWRECONNCFG_WAIT:
+            st = esp32_get_status();
+            if (st == ESP_STATUS_OK || st == ESP_STATUS_ERROR || st == ESP_STATUS_TIMEOUT) {
+                state = WIFI_CWJAP_SEND;
+            }
             break;
 
         case WIFI_CWJAP_SEND:
@@ -349,6 +407,9 @@ const char *Task_WiFi_Status_Str(void) {
         case WIFI_CWMODE_SEND:
         case WIFI_CWMODE_WAIT:
             return "setting station mode";
+        case WIFI_CWRECONNCFG_SEND:
+        case WIFI_CWRECONNCFG_WAIT:
+            return "configuring reconnect behavior";
         case WIFI_CWJAP_SEND:
         case WIFI_CWJAP_WAIT:
             return "joining WiFi";

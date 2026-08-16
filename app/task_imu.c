@@ -8,6 +8,10 @@
 #define CONSOLE_UART USART2
 #define IMU_I2C I2C1
 
+#define I2C_FAULT_THRESHOLD 3 /* consecutive read failures before latching - a single glitch shouldn't latch */
+#define I2C_FAULT_CLEAR_THRESHOLD 5 /* consecutive good reads before auto-clearing the LED latch -
+                                      * see task_battery.c's identical constant, same reasoning */
+
 /* Must match main.c's SCH_Add_Task(Task_IMU, 0, ...) period - used to
  * integrate gyro Z into a running yaw estimate below. */
 #define POLL_PERIOD_MS 200
@@ -21,6 +25,7 @@ static int16_t temp_c100 = 0;
 static int16_t mag_ut_x10[3] = {0, 0, 0};
 static int32_t yaw_cdeg = 0; /* degrees x100, see Task_IMU_Yaw_cdeg() */
 static int consecutive_read_failures = 0;
+static int consecutive_read_successes = 0;
 
 static int32_t normalize_cdeg(int32_t v) {
     v %= 36000;
@@ -106,12 +111,26 @@ void Task_IMU(void) {
 
     if (!ok) {
         consecutive_read_failures++;
-        if (consecutive_read_failures >= 3) {
+        consecutive_read_successes = 0;
+        if (consecutive_read_failures >= I2C_FAULT_THRESHOLD) {
             Task_LED_Report_I2C_Fault();
+            /* Same shared-bus lockup this threshold exists to catch as
+             * task_battery.c's identical block - see i2c_bus_recover()'s
+             * doc comment. Fixes task_battery.c too, same physical bus. */
+            i2c_bus_recover(IMU_I2C);
+            consecutive_read_failures = 0;
         }
         return;
     }
     consecutive_read_failures = 0;
+
+    /* Auto-clears the LED's I2C fault latch once recovery's proven
+     * itself - see task_battery.c's identical block/Task_LED_Clear_I2C_Fault()'s
+     * doc comment for why. Harmless no-op if nothing's latched. */
+    consecutive_read_successes++;
+    if (consecutive_read_successes >= I2C_FAULT_CLEAR_THRESHOLD) {
+        Task_LED_Clear_I2C_Fault();
+    }
 
     /* Yaw has no gravity reference (unlike pitch/roll, which come
      * straight from the accelerometer each read) - the only way to get

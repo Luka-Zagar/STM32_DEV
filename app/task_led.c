@@ -123,6 +123,10 @@ void Task_LED_Report_I2C_Fault(void) {
     i2c_fault_latched = 1;
 }
 
+void Task_LED_Clear_I2C_Fault(void) {
+    i2c_fault_latched = 0;
+}
+
 void Task_LED_Set_Battery_State(battery_state_t state) {
     battery_state = state;
 }

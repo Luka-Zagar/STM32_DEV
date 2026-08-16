@@ -20,6 +20,15 @@ static uint32_t response_len = 0;
 
 static int mqtt_connected = 0;
 
+/* Unlike the MQTT notifications below, these ARE bare tokens - confirmed
+ * both against Espressif's Wi-Fi AT command docs and directly against
+ * this exact module's own output (captured verbatim during an earlier
+ * debugging session: "WIFI DISCONNECT" appeared on its own line, no
+ * colon, no parameters). "WIFI GOT IP" (not just "WIFI CONNECTED") is
+ * used for the positive edge - association without a working IP isn't
+ * actually usable yet. */
+static int wifi_joined = 0;
+
 static int line_is(const char *line, const char *match) {
     while (*line && *match && *line == *match) {
         line++;
@@ -49,6 +58,7 @@ void esp32_init(USART_TypeDef *uart, uint32_t baud) {
     line_len = 0;
     status = ESP_STATUS_IDLE;
     mqtt_connected = 0;
+    wifi_joined = 0;
 }
 
 static void arm_wait(uint32_t timeout_ms) {
@@ -86,6 +96,15 @@ static void handle_line(const char *line) {
      * doc comment: the module reports these asynchronously). */
     if (starts_with(line, "+MQTTCONNECTED")) mqtt_connected = 1;
     else if (starts_with(line, "+MQTTDISCONNECTED")) mqtt_connected = 0;
+
+    /* WiFi station link state - same "tracked unconditionally" reasoning
+     * as above. This is what makes rejoining after going out of range
+     * actually work (see esp32_wifi_is_joined()'s doc comment) - without
+     * it, task_wifi.c only ever finds out the network's gone via MQTT
+     * publishes failing, and would just retry AT+MQTTCONN forever with
+     * no WiFi to carry it. */
+    if (line_is(line, "WIFI DISCONNECT")) wifi_joined = 0;
+    else if (line_is(line, "WIFI GOT IP")) wifi_joined = 1;
 
     /* "OK"/"SEND OK" are the plain-AT terminal successes; "+MQTTPUB:OK"
      * is AT+MQTTPUBRAW's own terminal success after the raw payload
@@ -135,6 +154,10 @@ const char *esp32_debug_response(void) {
 
 int esp32_mqtt_is_connected(void) {
     return mqtt_connected;
+}
+
+int esp32_wifi_is_joined(void) {
+    return wifi_joined;
 }
 
 /* ── AT+MQTTPUBRAW payload prompt ('>') ─────────────────────────────────

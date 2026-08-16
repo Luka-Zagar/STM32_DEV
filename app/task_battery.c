@@ -20,12 +20,16 @@
 #define PACK_CAPACITY_MAH 17500UL /* 1S5P, 5 x 3500mAh INR18650MJ1 cells */
 
 #define I2C_FAULT_THRESHOLD 3 /* consecutive read failures before latching - a single glitch shouldn't latch */
+#define I2C_FAULT_CLEAR_THRESHOLD 5 /* consecutive good reads before auto-clearing the LED latch - a bit more
+                                      * insurance than "the very next read worked", cheap to ask for since
+                                      * polling is fast relative to how rare a real lockup is */
 
 static battery_hw_state_t state = BATTERY_HW_NOT_FOUND;
 static uint16_t vbat_mv = 0;
 static int16_t ibat_ma = 0;
 static uint8_t soc_pct = 0;
 static int consecutive_read_failures = 0;
+static int consecutive_read_successes = 0;
 
 static void report(const char *msg) {
     uart_write_str(CONSOLE_UART, "INA3221: ");
@@ -128,12 +132,32 @@ void Task_Battery(void) {
 
     if (!ina3221_read_battery(BATTERY_I2C, &vbat_mv, &ibat_ma)) {
         consecutive_read_failures++;
+        consecutive_read_successes = 0;
         if (consecutive_read_failures >= I2C_FAULT_THRESHOLD) {
             Task_LED_Report_I2C_Fault();
+            /* A real bus lockup (not just a glitch, we're past the
+             * threshold) never clears on its own - the peripheral has
+             * no way to un-wedge itself, see i2c_bus_recover()'s doc
+             * comment. Recovering here fixes task_imu.c too, same
+             * physical bus - whichever task notices the fault first
+             * fixes it for both. Reset the counter so the very next
+             * poll gets a clean attempt rather than waiting a full
+             * threshold's worth of tries again. */
+            i2c_bus_recover(BATTERY_I2C);
+            consecutive_read_failures = 0;
         }
         return;
     }
     consecutive_read_failures = 0;
+
+    /* Auto-clears the LED's I2C fault latch once recovery's proven
+     * itself, rather than requiring someone to physically walk out to
+     * the bus and press 'A' - see Task_LED_Clear_I2C_Fault()'s doc
+     * comment. Harmless no-op if nothing's latched. */
+    consecutive_read_successes++;
+    if (consecutive_read_successes >= I2C_FAULT_CLEAR_THRESHOLD) {
+        Task_LED_Clear_I2C_Fault();
+    }
 
     soc_pct = estimate_soc_pct(vbat_mv);
 

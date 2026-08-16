@@ -22,11 +22,18 @@ static void i2c_gpio_init(I2C_TypeDef *i2c) {
     }
 }
 
+/* Remembered per-instance so i2c_bus_recover() can reinitialize with the
+ * same timing the caller originally chose, without needing it passed in
+ * again. Only I2C1 is wired up in this project (see i2c_gpio_init()),
+ * same as everywhere else in this file. */
+static uint32_t saved_timing_i2c1 = 0;
+
 void i2c_init(I2C_TypeDef *i2c, uint32_t timing) {
     i2c_gpio_init(i2c);
 
     if (i2c == I2C1) {
         RCC->APB1ENR1 |= RCC_APB1ENR1_I2C1EN;
+        saved_timing_i2c1 = timing;
     }
 
     i2c->CR1 &= ~I2C_CR1_PE; /* TIMINGR is only writable while PE=0 */
@@ -107,4 +114,47 @@ int i2c_write_read(I2C_TypeDef *i2c, uint8_t addr7,
     if (!wait_not_busy(i2c, I2C_TIMEOUT_MS)) return 0;
     if (!transfer_phase(i2c, addr7, (uint8_t *)wbuf, wlen, 0, 0)) return 0; /* no AUTOEND - repeated START follows */
     return transfer_phase(i2c, addr7, rbuf, rlen, 1, 1);
+}
+
+/* Not calibrated to a specific frequency - bit-banged recovery just
+ * needs to be slow enough for the pull-ups to actually pull the lines
+ * high (a few hundred ns to a couple us), nowhere near as timing-
+ * sensitive as the real I2C_CR1_PE-driven transfers above. */
+static void recover_delay(void) {
+    for (volatile int i = 0; i < 200; i++) { }
+}
+
+void i2c_bus_recover(I2C_TypeDef *i2c) {
+    if (i2c != I2C1) return; /* only I2C1 wired up in this project */
+
+    i2c->CR1 &= ~I2C_CR1_PE; /* peripheral off while the pins are bit-banged directly below */
+
+    /* Idle both lines high (released) before switching MODER, so the
+     * mode switch itself can't glitch the bus low. OTYPER (open-drain)
+     * and PUPDR (pull-up) are already set from i2c_gpio_init() and
+     * don't need touching - only MODER moves, AF <-> plain GPIO output. */
+    GPIOB->BSRR = (1UL << 8) | (1UL << 9);
+    GPIOB->MODER &= ~((3UL << (8 * 2)) | (3UL << (9 * 2)));
+    GPIOB->MODER |= (1UL << (8 * 2)) | (1UL << (9 * 2)); /* plain GPIO output */
+
+    for (int i = 0; i < 9; i++) {
+        if (GPIOB->IDR & (1UL << 9)) break; /* SDA already released - the stuck slave let go, no need to keep clocking */
+        GPIOB->ODR &= ~(1UL << 8); /* SCL low */
+        recover_delay();
+        GPIOB->ODR |= (1UL << 8);  /* SCL high (pull-up driven, since open-drain) */
+        recover_delay();
+    }
+
+    /* Manual STOP condition: SDA low-to-high while SCL is high. */
+    GPIOB->ODR &= ~(1UL << 9);
+    recover_delay();
+    GPIOB->ODR |= (1UL << 8);
+    recover_delay();
+    GPIOB->ODR |= (1UL << 9);
+    recover_delay();
+
+    /* i2c_init() re-runs i2c_gpio_init() (puts MODER back to AF4) and
+     * resets CR1/CR2/TIMINGR from scratch - none of the peripheral's
+     * pre-lockup state should be trusted, start clean. */
+    i2c_init(i2c, saved_timing_i2c1);
 }

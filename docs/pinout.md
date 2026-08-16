@@ -176,9 +176,36 @@ see the pin table above); the real difference is firmware architecture:
   off `+MQTTCONNECTED`/`+MQTTDISCONNECTED` lines, not just as a direct reply
   to a command) and routes through `MQTTCLEAN` before ever re-sending
   `MQTTCONN`.
+- **WiFi drop (hotspot out of range, e.g. on a moving bus) wasn't
+  reconnecting on its own.** The module's own `AT+CWRECONNCFG` auto-
+  reconnect is now explicitly disabled (`0,0`, one-time at bring-up) -
+  `task_wifi.c` owns every reconnect itself instead, same reasoning as the
+  MQTTCLEAN/MQTTCONN handling above: two independent auto-reconnect
+  mechanisms racing each other is harder to reason about than owning it in
+  one place. Tracked via the async `WIFI DISCONNECT`/`WIFI GOT IP` lines
+  (bare tokens, no colon/params - unlike the `+MQTTCONNECTED`/
+  `+MQTTDISCONNECTED` pair above, confirmed against this exact module's own
+  captured output) in `esp32_wifi_is_joined()`; a drop past the initial
+  join routes straight back to `AT+CWJAP` (which re-does `MQTTUSERCFG`/
+  `MQTTCONN` downstream anyway, so nothing extra is needed once WiFi's back).
 
 ## Bring-up notes
 
+- **I2C1 bus lockup - readings freeze, red LED latches 2Hz (I2C fault),
+  never recovers on its own.** After running fine for a while, both
+  `Task_Battery` (INA3221) and `Task_IMU` (MPU9255) share I2C1 - if either
+  device is interrupted mid-transaction (noise, a brief brown-out) it can
+  latch SDA low forever; the STM32's hardware I2C peripheral has no way to
+  un-wedge that by itself, so `wait_not_busy()` in `drivers/i2c.c` just
+  times out on every future transaction, permanently, matching this exact
+  symptom (frozen values, not zeroed ones - `Task_Battery`/`Task_IMU` only
+  overwrite their static readings on a *successful* read). Fixed with a
+  standard I2C bus-recovery routine (`i2c_bus_recover()`): drop to plain
+  GPIO, bit-bang up to 9 SCL pulses to flush whatever partial byte a stuck
+  slave thinks it still owes, manual STOP, full peripheral reinit. Wired
+  into both tasks' existing `I2C_FAULT_THRESHOLD`-consecutive-failures
+  latch point (not on every single glitch - a real lockup is what this is
+  for); either task can trigger it and it fixes the shared bus for both.
 - **SD card must be formatted FAT32, not exFAT.** `FF_FS_EXFAT` is compiled
   out of this project's FatFs build (keeps flash/RAM down - CSV logs never
   need exFAT's feature set), so an exFAT-formatted card mounts with

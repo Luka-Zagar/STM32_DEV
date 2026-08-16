@@ -26,10 +26,17 @@
  *   2 flash/s   - I2C fault (INA3221/IMU not responding)      (latched)
  *   3 flash/s   - battery low                                (live)
  *   off         - no fault
- * "Latched" faults stay on once triggered until Task_LED_Ack_Faults()
- * is called (wired to a console key - see task_console.c's LED menu),
- * even if the underlying condition clears itself, so a transient SD
- * write error can't scroll off unnoticed. */
+ * "Latched" faults stay on once triggered until acknowledged, so a
+ * transient fault can't scroll off unnoticed - either manually via
+ * Task_LED_Ack_Faults() (wired to a console key - see task_console.c's
+ * LED menu), or, for the I2C fault specifically, automatically once
+ * task_battery.c/task_imu.c see enough consecutive good reads after an
+ * i2c_bus_recover() to trust the bus is actually healthy again (see
+ * Task_LED_Clear_I2C_Fault()) - unattended/bus-mounted deployment means
+ * nobody's there to press a button every time a connector jostles loose
+ * for a moment. The SD write-error latch has no such auto-recovery path
+ * (a bad write staying bad isn't self-healing the way a wedged I2C bus
+ * is), so it stays manual-ack-only. */
 
 typedef enum {
     BATTERY_OK = 0,
@@ -50,6 +57,15 @@ void Task_LED_Ack_Faults(void);
  * WHO_AM_I mismatch or a bus timeout - latches the red 2-flash/s state.
  * No I2C devices exist yet, so nothing calls this today. */
 void Task_LED_Report_I2C_Fault(void);
+
+/* Auto-clear counterpart to the above, for a fault that's since proven
+ * itself recovered (see task_battery.c/task_imu.c's post-recovery
+ * consecutive-success counters, following i2c_bus_recover() in
+ * drivers/i2c.c) - unlike Task_LED_Ack_Faults(), only touches the I2C
+ * fault, not the SD write-error latch (that one stays manual-ack-only;
+ * there's no equivalent auto-recovery for a bad SD write). Safe to call
+ * when nothing's latched - just a no-op. */
+void Task_LED_Clear_I2C_Fault(void);
 
 /* Hook for the future battery/SoC task (INA3221) to report live state.
  * Defaults to BATTERY_OK until something calls this. */
